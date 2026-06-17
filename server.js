@@ -23,14 +23,7 @@ const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || DEFAULT_ALLOWED_ORIGINS.joi
     .filter(Boolean);
 
 app.use(cors({
-    origin(origin, callback) {
-        if (!origin || ALLOWED_ORIGINS.includes(origin)) {
-            return callback(null, true);
-        }
-        const error = new Error('CORS origin not allowed');
-        error.statusCode = 403;
-        return callback(error);
-    },
+    origin: '*', // Allow all origins for Vercel/Render preview environments
 }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -1127,17 +1120,21 @@ app.use((error, req, res, next) => {
 
 // Start the server on port 3000
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    const aiProvider = getAiProvider();
-    console.log(`==================================================`);
-    console.log(`🚀 EQUITRACK Secure Backend Engine Active!`);
-    console.log(`🔗 Open the app: http://localhost:${PORT}`);
-    if (aiProvider === 'groq') {
-        console.log(`🤖 AI Advisor: Groq (${process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'})`);
-    } else if (aiProvider === 'gemini') {
-        console.log(`🤖 AI Advisor: Gemini (${process.env.GEMINI_MODEL || 'gemini-2.5-flash'})`);
-    } else {
-        console.log(`⚠️  AI Advisor: no API key (add GROQ_API_KEY to .env)`);
-    }
-    console.log(`==================================================`);
-});
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, () => {
+        const aiProvider = getAiProvider();
+        console.log(`==================================================`);
+        console.log(`🚀 EQUITRACK Secure Backend Engine Active!`);
+        console.log(`🔗 Open the app: http://localhost:${PORT}`);
+        if (aiProvider === 'groq') {
+            console.log(`🤖 AI Advisor: Groq (${process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'})`);
+        } else if (aiProvider === 'gemini') {
+            console.log(`🤖 AI Advisor: Gemini (${process.env.GEMINI_MODEL || 'gemini-2.5-flash'})`);
+        } else {
+            console.log(`⚠️  AI Advisor: no API key (add GROQ_API_KEY to .env)`);
+        }
+        console.log(`==================================================`);
+    });
+}
+
+module.exports = app;
