@@ -1414,6 +1414,7 @@ function setupCryptoTabs() {
 async function setupInflationTracker() {
     const searchBtn = document.getElementById('inflation-search-btn');
     const searchInput = document.getElementById('inflation-search-input');
+    const backBtn = document.getElementById('inflation-back-btn');
     
     if (searchBtn) {
         searchBtn.addEventListener('click', executeInflationSearch);
@@ -1422,6 +1423,9 @@ async function setupInflationTracker() {
         searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') executeInflationSearch();
         });
+    }
+    if (backBtn) {
+        backBtn.addEventListener('click', clearInflationResults);
     }
 
     // Pre-fetch World Bank country mapping array for search resolution
@@ -1437,6 +1441,16 @@ async function setupInflationTracker() {
     }
 
     loadMajorEconomies();
+}
+
+function clearInflationResults() {
+    const results = document.getElementById('inflation-results-container');
+    const landing = document.getElementById('macro-landing-view');
+    const searchInput = document.getElementById('inflation-search-input');
+    
+    if (results) results.classList.add('hidden-element');
+    if (landing) landing.classList.remove('hidden-element');
+    if (searchInput) searchInput.value = '';
 }
 
 async function fetchWorldBankIndicator(countryCode, indicator) {
