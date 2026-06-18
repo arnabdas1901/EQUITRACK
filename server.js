@@ -1106,6 +1106,22 @@ app.get('/api/crypto/history', async (req, res) => {
         return res.json(data);
     } catch (error) {
         console.error('CoinGecko History Error:', error);
+
+        if (process.env.TWELVEDATA_API_KEY) {
+            try {
+                const tdSymbol = (symbol || id || queryValue).toUpperCase();
+                const tdResponse = await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(tdSymbol)}/USD&interval=1day&outputsize=${daysNum}&apikey=${process.env.TWELVEDATA_API_KEY}`);
+                const tdData = await tdResponse.json();
+                
+                if (tdData.status === 'ok' && Array.isArray(tdData.values)) {
+                    const prices = tdData.values.map(v => [new Date(v.datetime).getTime(), parseFloat(v.close)]).reverse();
+                    return res.json({ prices });
+                }
+            } catch (tdError) {
+                console.error('TwelveData Crypto History Fallback Error:', tdError);
+            }
+        }
+
         res.status(500).json({ error: 'Failed to fetch cryptocurrency history' });
     }
 });

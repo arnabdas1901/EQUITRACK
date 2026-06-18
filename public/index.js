@@ -1219,14 +1219,13 @@ async function displayCryptoDetails(cryptoId) {
     try {
         const [detailsResponse, historyResponse] = await Promise.all([
             fetchWithTimeout(`${BACKEND_URL}/api/crypto/details?id=${encodeURIComponent(cryptoId)}`, { timeout: 10000 }),
-            fetchWithTimeout(`${BACKEND_URL}/api/crypto/history?id=${encodeURIComponent(cryptoId)}&days=365`, { timeout: 10000 }),
+            fetchWithTimeout(`${BACKEND_URL}/api/crypto/history?id=${encodeURIComponent(cryptoId)}&days=365`, { timeout: 10000 }).catch(() => null),
         ]);
 
         const details = await safeJsonParse(detailsResponse);
         const history = await safeJsonParse(historyResponse);
 
-        if (!detailsResponse.ok) throw new Error(details?.error || 'Failed to fetch details');
-        if (!historyResponse.ok) throw new Error(history?.error || 'Failed to fetch history');
+        if (!detailsResponse || !detailsResponse.ok) throw new Error(details?.error || 'Failed to fetch details');
 
         populateCryptoDetails(details);
         renderCryptoChart(history);
