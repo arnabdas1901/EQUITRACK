@@ -724,7 +724,7 @@ async function tryFinnhubFallback(symbol, timeframe) {
         low: fh.l[index],
         close: fh.c[index],
         volume: fh.v[index]
-    }));
+    })).reverse();
 
     return { values };
 }
