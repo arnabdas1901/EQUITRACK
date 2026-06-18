@@ -111,8 +111,8 @@ function setupMobileMenu() {
 }
 
 function setupStatementTabs() {
-    const tabBtns = document.querySelectorAll('.panel-tab-btn');
-    const tabPanels = document.querySelectorAll('.tab-panel');
+    const tabBtns = document.querySelectorAll('#dashboard-equity .panel-tab-btn');
+    const tabPanels = document.querySelectorAll('#dashboard-equity .tab-panel');
 
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {

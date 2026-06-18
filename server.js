@@ -947,11 +947,41 @@ app.get('/api/twelvedata/statements', async (req, res) => {
     }
 
     try {
-        const response = await fetch(`https://api.twelvedata.com/${type}?symbol=${encodeURIComponent(symbol)}&apikey=${process.env.TWELVEDATA_API_KEY}`);
-        const data = await response.json();
-        res.json(data);
+        let twelvedataFailed = false;
+        let data = null;
+
+        if (process.env.TWELVEDATA_API_KEY) {
+            const response = await fetch(`https://api.twelvedata.com/${type}?symbol=${encodeURIComponent(symbol)}&apikey=${process.env.TWELVEDATA_API_KEY}`);
+            data = await response.json();
+            if (data?.status === 'error') {
+                twelvedataFailed = true;
+            }
+        } else {
+            twelvedataFailed = true;
+        }
+
+        if (twelvedataFailed) {
+            const fmpKey = process.env.FMP_API_KEY || process.env.FINANCIAL_MODELING_PREP_API_KEY || process.env.FINANCIALMODELINGPREP_API_KEY;
+            if (fmpKey) {
+                const fmpType = type === 'balance_sheet' ? 'balance-sheet-statement' : 'cash-flow-statement';
+                const fmpUrl = `https://financialmodelingprep.com/api/v3/${fmpType}/${encodeURIComponent(symbol)}?limit=1&apikey=${fmpKey}`;
+                const fmpResponse = await fetch(fmpUrl);
+                const fmpData = await fmpResponse.json();
+
+                if (Array.isArray(fmpData) && fmpData.length > 0) {
+                    const stmt = fmpData[0];
+                    if (type === 'balance_sheet') {
+                        return res.json({ balance_sheet: [{ total_assets: stmt.totalAssets, total_liabilities: stmt.totalLiabilities, total_shareholders_equity: stmt.totalStockholdersEquity || stmt.totalEquity }] });
+                    } else {
+                        return res.json({ cash_flow: [{ operating_cash_flow: stmt.operatingCashFlow, investing_cash_flow: stmt.netCashUsedForInvestingActivites || stmt.netCashUsedForInvestingActivities, financing_cash_flow: stmt.netCashUsedProvidedByFinancingActivities, net_change_in_cash: stmt.netChangeInCash }] });
+                    }
+                }
+            }
+        }
+
+        res.json(data || { error: 'No data available' });
     } catch (error) {
-        console.error(`TwelveData ${type} Error:`, error);
+        console.error(`Statements Error:`, error);
         res.status(500).json({ error: `Failed to fetch ${type}` });
     }
 });

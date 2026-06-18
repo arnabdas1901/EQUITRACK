@@ -1254,15 +1254,16 @@ select {
     }
 
     .tab-selectors-strip {
-        overflow-x: auto;
-        white-space: nowrap;
-        gap: 4px;
-        padding-bottom: 2px;
-        -webkit-overflow-scrolling: touch;
+        display: flex;
+        flex-wrap: wrap;
+        white-space: normal;
+        gap: 6px;
+        padding-bottom: 6px;
     }
 
     .panel-tab-btn {
-        flex: 0 0 auto;
+        flex: 1 1 auto;
+        text-align: center;
         min-height: 44px;
         padding: 10px 12px;
         font-size: 0.86rem;
