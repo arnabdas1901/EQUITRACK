@@ -827,7 +827,8 @@ select {
     word-break: break-word;
 }
 
-.crypto-hero-identity {
+.crypto-hero-identity,
+.macro-hero-identity {
     display: flex;
     align-items: center;
     gap: 12px;
