@@ -1599,9 +1599,16 @@ function renderMacroChart(labels, data) {
     const canvas = document.getElementById('inflationHistoricalChart');
     if (!canvas) return;
 
+    const latestValue = data.length > 0 ? data[data.length - 1] : 0;
+    const isRunningHot = latestValue > 2.5;
+    const lineColor = isRunningHot ? '#ef4444' : '#10b981';
+    const fillColor = isRunningHot ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)';
+
     if (macroChartInstance) {
         macroChartInstance.data.labels = labels;
         macroChartInstance.data.datasets[0].data = data;
+        macroChartInstance.data.datasets[0].borderColor = lineColor;
+        macroChartInstance.data.datasets[0].backgroundColor = fillColor;
         macroChartInstance.update();
     } else {
         macroChartInstance = new Chart(canvas.getContext('2d'), {
@@ -1611,8 +1618,8 @@ function renderMacroChart(labels, data) {
                 datasets: [{
                     label: 'Annual Inflation Rate (%)',
                     data: data,
-                    borderColor: '#ef4444',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderColor: lineColor,
+                    backgroundColor: fillColor,
                     tension: 0.3,
                     fill: true,
                     pointRadius: 4,
