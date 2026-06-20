@@ -138,7 +138,6 @@ async function fetchFmpMetrics(symbol) {
         return { error: 'Missing FMP API key' };
     }
 
-    const encodedSymbol = encodeURIComponent(symbol);
     const candidateUrls = [
         `https://financialmodelingprep.com/api/v3/ratios-ttm/${encodeURIComponent(symbol)}?limit=1&apikey=${encodeURIComponent(fmpKey)}`,
         `https://financialmodelingprep.com/api/v4/ratios-ttm/${encodeURIComponent(symbol)}?limit=1&apikey=${encodeURIComponent(fmpKey)}`,

@@ -6,7 +6,7 @@ const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY;
 function coinGeckoHeaders() {
     const headers = {};
     if (COINGECKO_API_KEY) {
-        headers['x_cg_pro_api_key'] = COINGECKO_API_KEY;
+        headers['x-cg-pro-api-key'] = COINGECKO_API_KEY;
     }
     return headers;
 }

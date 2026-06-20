@@ -10,8 +10,8 @@ const INDEX_QUOTE_CACHE = {
 };
 
 const COMMODITY_PROXIES = [
-    { id: 'gold', name: 'Gold', emoji: '🪙', symbol: 'GLD', description: 'SPDR Gold Shares' },
-    { id: 'silver', name: 'Silver', emoji: '⚪', symbol: 'SLV', description: 'iShares Silver Trust' },
+    { id: 'gold', name: 'Gold', emoji: '🟡', symbol: 'GLD', description: 'SPDR Gold Shares' },
+    { id: 'silver', name: 'Silver', emoji: '🪙', symbol: 'SLV', description: 'iShares Silver Trust' },
     { id: 'crude_oil', name: 'Crude Oil', emoji: '🛢️', symbol: 'USO', description: 'United States Oil Fund' },
     { id: 'natural_gas', name: 'Natural Gas', emoji: '🔥', symbol: 'UNG', description: 'United States Natural Gas Fund' },
     { id: 'copper', name: 'Copper', emoji: '🟠', symbol: 'CPER', description: 'United States Copper Index Fund' },

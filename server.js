@@ -11,17 +11,6 @@ if (!process.execArgv.includes('--use-system-ca')) {
 
 const app = express();
 
-const DEFAULT_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:5500',
-    'http://127.0.0.1:5500',
-];
-const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || DEFAULT_ALLOWED_ORIGINS.join(','))
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
 app.use(cors({
     origin: '*', // Allow all origins for Vercel/Render preview environments
 }));

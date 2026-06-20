@@ -1,60 +1,87 @@
 import { BACKEND_URL, fetchWithTimeout, safeJsonParse, showToast, formatLargeCurrency, setupTabs } from '../utils.js';
 
 let equityChartInstance = null;
-let portfolioChartInstance = null;
+let rawHistoricalData = [];
+let activeEquityTicker = null;
+let commodityData = [];
 
 export function loadDashboard() {
-    setupTabs('.dashboard-header');
     setupTabs('#dashboard-equity');
     setupSearch();
-    fetchMarketData('AAPL', '1Y');
+    setupTimeframeSelectors();
+    fetchLiveIndexValues();
+    setupCommodityWatchlist();
 }
 
 function setupSearch() {
-    const searchBtn = document.getElementById('search-btn');
-    const searchInput = document.getElementById('ticker-input');
-    const timeframeSelect = document.getElementById('timeframe-select');
+    const searchBtn = document.getElementById('equity-search-btn');
+    const searchInput = document.getElementById('equity-search-input');
+    const backBtn = document.getElementById('equity-back-btn');
 
     if (searchBtn) {
         searchBtn.addEventListener('click', () => {
-            const ticker = searchInput?.value.trim().toUpperCase() || 'AAPL';
-            const tf = timeframeSelect?.value || '1Y';
-            fetchMarketData(ticker, tf);
+            const ticker = searchInput?.value.trim().toUpperCase();
+            if (ticker) executeEquityAnalysis(ticker);
         });
     }
 
     if (searchInput) {
         searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                const ticker = searchInput.value.trim().toUpperCase() || 'AAPL';
-                const tf = timeframeSelect?.value || '1Y';
-                fetchMarketData(ticker, tf);
+                const ticker = searchInput.value.trim().toUpperCase();
+                if (ticker) executeEquityAnalysis(ticker);
             }
         });
     }
 
-    if (timeframeSelect) {
-        timeframeSelect.addEventListener('change', () => {
-            const ticker = searchInput?.value.trim().toUpperCase() || 'AAPL';
-            const tf = timeframeSelect.value;
-            fetchMarketData(ticker, tf);
-        });
+    if (backBtn) {
+        backBtn.addEventListener('click', clearEquityResults);
     }
 }
 
-async function fetchMarketData(ticker, timeframe = '1Y') {
-    const loader = document.getElementById('global-loader');
+function clearEquityResults() {
+    const resultsContainer = document.getElementById('equity-results-container');
+    const searchInput = document.getElementById('equity-search-input');
+    const watchlist = document.querySelector('.commodities-widget');
+    
+    if (resultsContainer) resultsContainer.classList.add('hidden-element');
+    if (searchInput) searchInput.value = '';
+    if (watchlist) watchlist.classList.remove('hidden-element');
+}
+
+function setupTimeframeSelectors() {
+    const tfBtns = document.querySelectorAll('#dashboard-equity .tf-btn');
+    tfBtns.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            tfBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (activeEquityTicker) {
+                await loadEquityTimeSeries(activeEquityTicker, btn.getAttribute('data-tf'));
+            }
+        });
+    });
+}
+
+async function executeEquityAnalysis(ticker) {
+    activeEquityTicker = ticker;
+    
+    const loader = document.getElementById('equity-loader');
+    const resultsContainer = document.getElementById('equity-results-container');
+    const watchlist = document.querySelector('.commodities-widget');
+    
     if (loader) loader.classList.remove('hidden-element');
+    if (resultsContainer) resultsContainer.classList.add('hidden-element');
+    if (watchlist) watchlist.classList.add('hidden-element');
 
     try {
         const [profileRes, quoteRes, metricsRes, chartRes, bsRes, cfRes] = await Promise.all([
-            fetchWithTimeout(`${BACKEND_URL}/api/finnhub/profile?symbol=${ticker}`),
-            fetchWithTimeout(`${BACKEND_URL}/api/finnhub/quote?symbol=${ticker}`),
-            fetchWithTimeout(`${BACKEND_URL}/api/finnhub/metrics?symbol=${ticker}`),
-            fetchWithTimeout(`${BACKEND_URL}/api/twelvedata/time_series?symbol=${ticker}&timeframe=${timeframe}`),
-            fetchWithTimeout(`${BACKEND_URL}/api/twelvedata/statements?symbol=${ticker}&type=balance_sheet`),
-            fetchWithTimeout(`${BACKEND_URL}/api/twelvedata/statements?symbol=${ticker}&type=cash_flow`)
-        ].map(p => p.catch(() => null)));
+            fetchWithTimeout(`${BACKEND_URL}/api/finnhub/profile?symbol=${ticker}`).catch(() => null),
+            fetchWithTimeout(`${BACKEND_URL}/api/finnhub/quote?symbol=${ticker}`).catch(() => null),
+            fetchWithTimeout(`${BACKEND_URL}/api/finnhub/metrics?symbol=${ticker}`).catch(() => null),
+            fetchWithTimeout(`${BACKEND_URL}/api/twelvedata/time_series?symbol=${ticker}&timeframe=1Y`).catch(() => null),
+            fetchWithTimeout(`${BACKEND_URL}/api/twelvedata/statements?symbol=${ticker}&type=balance_sheet`).catch(() => null),
+            fetchWithTimeout(`${BACKEND_URL}/api/twelvedata/statements?symbol=${ticker}&type=cash_flow`).catch(() => null)
+        ]);
 
         const profile = await safeJsonParse(profileRes);
         const quote = await safeJsonParse(quoteRes);
@@ -63,25 +90,41 @@ async function fetchMarketData(ticker, timeframe = '1Y') {
         const balanceSheet = await safeJsonParse(bsRes);
         const cashFlow = await safeJsonParse(cfRes);
 
-        if (profile?.error || quote?.error) {
-            throw new Error(profile?.error || quote?.error || 'Invalid ticker symbol');
+        if (profile?.error || quote?.error || !profile?.name) {
+            throw new Error(profile?.error || quote?.error || 'Invalid ticker symbol or data unavailable');
         }
 
         updateUI(profile, quote, metrics, balanceSheet, cashFlow);
         
         if (chartData && !chartData.error && chartData.values) {
-            renderEquityChart(chartData.values);
+            rawHistoricalData = [...chartData.values].reverse();
+            renderEquityChart(rawHistoricalData);
         } else {
             console.warn('Chart data unavailable:', chartData);
         }
 
-        calculatePortfolioAllocation(metrics, quote);
+        if (resultsContainer) resultsContainer.classList.remove('hidden-element');
         
     } catch (error) {
         console.error("Market Data Fetch Error:", error);
         showToast(error.message || "Failed to load market data");
+        clearEquityResults();
     } finally {
         if (loader) loader.classList.add('hidden-element');
+    }
+}
+
+async function loadEquityTimeSeries(symbol, timeframe = '1Y') {
+    try {
+        const response = await fetchWithTimeout(`${BACKEND_URL}/api/twelvedata/time_series?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}`);
+        const timeSeriesData = await safeJsonParse(response);
+
+        if (timeSeriesData?.values && timeSeriesData.values.length > 0) {
+            rawHistoricalData = [...timeSeriesData.values].reverse();
+            renderEquityChart(rawHistoricalData);
+        }
+    } catch (error) {
+        console.warn('Failed to load equity chart data:', error);
     }
 }
 
@@ -94,43 +137,70 @@ function updateUI(profile, quote, metrics, bs, cf) {
     const metricData = metrics?.metric || {};
 
     const elements = {
-        'company-name': profile?.name || 'Unknown',
-        'ticker-symbol': profile?.ticker || '--',
-        'current-price': quote?.c ? `$${quote.c.toFixed(2)}` : '--',
-        'price-change': quote?.d ? `${quote.d > 0 ? '+' : ''}${quote.d.toFixed(2)} (${quote.dp?.toFixed(2)}%)` : '--',
-        'metric-pe': formatValue(metricData.peTTM),
-        'metric-pb': formatValue(metricData.pbAnnual),
-        'metric-ps': formatValue(metricData.psTTM),
-        'metric-roe': formatValue(metricData.roeTTM) + '%',
-        'metric-roa': formatValue(metricData.roaTTM) + '%',
-        'metric-margin': formatValue(metricData.netProfitMarginTTM) + '%',
-        'metric-current-ratio': formatValue(metricData.currentRatioAnnual),
-        'metric-debt-equity': formatValue(metricData.debtToEquityAnnual),
-        'metric-quick-ratio': formatValue(metricData.quickRatioAnnual),
-        'metric-revenue-growth': formatValue(metricData.revenueGrowth5Y) + '%',
-        'metric-eps-growth': formatValue(metricData.epsGrowth5Y) + '%',
-        'metric-dividend-yield': formatValue(metricData.dividendYieldIndicatedAnnual) + '%'
+        'company-name-display': profile?.name || 'Unknown',
+        'company-ticker-badge': profile?.ticker || '--',
+        'live-price-display': quote?.c ? `$${quote.c.toFixed(2)}` : '--',
+        'live-change-display': quote?.d ? `${quote.d > 0 ? '+' : ''}${quote.d.toFixed(2)} (${quote.dp?.toFixed(2)}%)` : '--',
+        'metric-52w-high': quote?.h ? `$${quote.h.toFixed(2)}` : '--',
+        'metric-52w-low': quote?.l ? `$${quote.l.toFixed(2)}` : '--',
+        'metric-mkt-cap': formatValue(profile?.marketCapitalization, true),
+        'metric-beta': formatValue(metricData.beta)
     };
 
     for (const [id, value] of Object.entries(elements)) {
         const el = document.getElementById(id);
         if (el) {
             el.textContent = value;
-            if (id === 'price-change' && quote?.d) {
+            if (id === 'live-change-display' && quote?.d) {
                 el.style.color = quote.d >= 0 ? '#10b981' : '#ef4444';
             }
         }
     }
 
-    const finTable = document.getElementById('financial-statements-body');
-    if (finTable) {
+    // Populate Ratios Grid
+    const ratiosGrid = document.getElementById('ratios-grid-target');
+    if (ratiosGrid) {
+        const ratios = [
+            { label: 'P/E Ratio', value: formatValue(metricData.peTTM) },
+            { label: 'P/B Ratio', value: formatValue(metricData.pbAnnual) },
+            { label: 'P/S Ratio', value: formatValue(metricData.psTTM) },
+            { label: 'ROE', value: formatValue(metricData.roeTTM) + '%' },
+            { label: 'ROA', value: formatValue(metricData.roaTTM) + '%' },
+            { label: 'Net Margin', value: formatValue(metricData.netProfitMarginTTM) + '%' },
+            { label: 'Current Ratio', value: formatValue(metricData.currentRatioAnnual) },
+            { label: 'Debt/Equity', value: formatValue(metricData.debtToEquityAnnual) },
+            { label: 'Revenue Growth 5Y', value: formatValue(metricData.revenueGrowth5Y) + '%' },
+            { label: 'EPS Growth 5Y', value: formatValue(metricData.epsGrowth5Y) + '%' },
+            { label: 'Dividend Yield', value: formatValue(metricData.dividendYieldIndicatedAnnual) + '%' }
+        ];
+
+        ratiosGrid.innerHTML = ratios.map(r => `
+            <div class="ratio-item">
+                <span class="ratio-label">${r.label}</span>
+                <span class="ratio-value">${r.value}</span>
+            </div>
+        `).join('');
+    }
+
+    const descEl = document.getElementById('corporate-description-text');
+    if (descEl) {
+        descEl.textContent = profile?.name ? `${profile.name} is a company in the ${profile.finnhubIndustry || 'General'} sector, traded on ${profile.exchange || 'the public markets'}.` : 'Company description unavailable.';
+    }
+
+    const bsTable = document.getElementById('balance-sheet-table-body');
+    if (bsTable) {
         const bsData = bs?.balance_sheet?.[0] || {};
-        const cfData = cf?.cash_flow?.[0] || {};
-        
-        finTable.innerHTML = `
+        bsTable.innerHTML = `
             <tr><td>Total Assets</td><td>${formatLargeCurrency(bsData.total_assets || bsData.totalAssets)}</td></tr>
             <tr><td>Total Liabilities</td><td>${formatLargeCurrency(bsData.total_liabilities || bsData.totalLiabilities)}</td></tr>
             <tr><td>Total Equity</td><td>${formatLargeCurrency(bsData.total_shareholders_equity || bsData.totalEquity)}</td></tr>
+        `;
+    }
+
+    const cfTable = document.getElementById('cashflow-table-body');
+    if (cfTable) {
+        const cfData = cf?.cash_flow?.[0] || {};
+        cfTable.innerHTML = `
             <tr><td>Operating Cash Flow</td><td>${formatLargeCurrency(cfData.operating_cash_flow || cfData.operatingCashFlow)}</td></tr>
             <tr><td>Investing Cash Flow</td><td>${formatLargeCurrency(cfData.investing_cash_flow || cfData.netCashUsedForInvestingActivites)}</td></tr>
             <tr><td>Financing Cash Flow</td><td>${formatLargeCurrency(cfData.financing_cash_flow || cfData.netCashUsedProvidedByFinancingActivities)}</td></tr>
@@ -139,11 +209,10 @@ function updateUI(profile, quote, metrics, bs, cf) {
     }
 }
 
-function renderEquityChart(values) {
-    const canvas = document.getElementById('priceChart');
-    if (!canvas) return;
+function renderEquityChart(data) {
+    const canvas = document.getElementById('equityHistoricalChart');
+    if (!canvas || !data || data.length === 0) return;
 
-    const data = [...values].reverse();
     const labels = data.map(v => v.datetime);
     const prices = data.map(v => parseFloat(v.close));
 
@@ -186,58 +255,171 @@ function renderEquityChart(values) {
     });
 }
 
-function calculatePortfolioAllocation(metrics, quote) {
-    const beta = metrics?.metric?.beta || 1.0;
-    const volatility = Math.min(Math.max(beta / 2, 0.1), 0.9);
-    
-    let equity = 60 * volatility;
-    let fixedIncome = 40 * (1 - volatility);
-    let metals = 100 - (equity + fixedIncome);
-    
-    if (quote?.d < 0) {
-        fixedIncome += 5;
-        equity -= 5;
-    }
+// --- Live Indices ---
+async function fetchLiveIndexValues() {
+    const spValue = document.getElementById('sp500-live-value');
+    const spSource = document.getElementById('sp500-source');
+    const spChange = document.getElementById('sp500-change');
+    const nasValue = document.getElementById('nasdaq-live-value');
+    const nasSource = document.getElementById('nasdaq-source');
+    const nasChange = document.getElementById('nasdaq-change');
 
-    renderPortfolioPieChart([equity, fixedIncome, metals]);
+    try {
+        const response = await fetchWithTimeout(`${BACKEND_URL}/api/indices`);
+        const payload = await safeJsonParse(response);
+        
+        const formatIndexValue = (value) => parseFloat(value).toFixed(2);
+        const formatChange = (value, percentage) => `${value >= 0 ? '+' : ''}${parseFloat(value).toFixed(2)} (${parseFloat(percentage).toFixed(2)}%)`;
+        const formatSource = (item, fallback) => {
+            const symbol = item.symbol || item.requestedSymbol || fallback;
+            return item.source ? `${symbol} - ${item.source}` : symbol;
+        };
+
+        if (payload?.sp500) {
+            spValue && (spValue.innerText = formatIndexValue(payload.sp500.price));
+            spSource && (spSource.innerText = formatSource(payload.sp500, 'S&P 500'));
+            if (spChange) {
+                spChange.innerText = formatChange(payload.sp500.change, payload.sp500.changePercent);
+                spChange.className = 'index-change ' + (payload.sp500.change >= 0 ? 'pos-change' : 'neg-change');
+            }
+        }
+
+        if (payload?.nasdaq) {
+            nasValue && (nasValue.innerText = formatIndexValue(payload.nasdaq.price));
+            nasSource && (nasSource.innerText = formatSource(payload.nasdaq, 'NASDAQ'));
+            if (nasChange) {
+                nasChange.innerText = formatChange(payload.nasdaq.change, payload.nasdaq.changePercent);
+                nasChange.className = 'index-change ' + (payload.nasdaq.change >= 0 ? 'pos-change' : 'neg-change');
+            }
+        }
+    } catch (error) {
+        console.warn('Failed to load live index values:', error);
+    }
 }
 
-function renderPortfolioPieChart(dataArr) {
-    const portfolioData = dataArr.map(v => Number(Math.max(0, v).toFixed(1)));
-    const sum = portfolioData.reduce((a,b)=>a+b,0);
-    if(sum !== 100) {
-        portfolioData[0] += Number((100 - sum).toFixed(1));
+// --- Commodities ---
+async function setupCommodityWatchlist() {
+    try {
+        const response = await fetchWithTimeout(`${BACKEND_URL}/api/commodities`);
+        const payload = await safeJsonParse(response);
+        commodityData = payload.commodities || [];
+        renderCommodityList(commodityData);
+        if (commodityData.length) {
+            selectCommodity(commodityData[0].symbol);
+        }
+    } catch (error) {
+        console.warn('Failed to load commodity watchlist:', error);
+        const grid = document.getElementById('commodity-selector-grid');
+        if (grid) {
+            grid.innerHTML = '<div class="commodity-card">Unable to load commodity data.</div>';
+        }
     }
-    
-    const colors = ['#2563eb', '#64748b', '#f59e0b'];
-    const canvas = document.getElementById('portfolioPieChart');
-    if (!canvas) return;
+}
 
-    if (portfolioChartInstance) portfolioChartInstance.destroy();
-    portfolioChartInstance = new Chart(canvas.getContext('2d'), {
-        type: 'pie',
-        data: { 
-            labels: ['Equity', 'Fixed Income', 'Metals'], 
-            datasets: [{ data: portfolioData, backgroundColor: colors, borderWidth: 0 }] 
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
+function renderCommodityList(items) {
+    const grid = document.getElementById('commodity-selector-grid');
+    if (!grid) return;
 
-    const legendTarget = document.getElementById('portfolio-legend-target');
-    if(legendTarget) {
-        legendTarget.innerHTML = `
-            <div class="legend-node">
-                <div class="legend-meta"><div class="legend-color-dot" style="background:${colors[0]}"></div><span>Equity / Alpha Assets</span></div>
-                <span class="legend-value">${portfolioData[0]}%</span>
-            </div>
-            <div class="legend-node">
-                <div class="legend-meta"><div class="legend-color-dot" style="background:${colors[1]}"></div><span>Fixed Income / Debt</span></div>
-                <span class="legend-value">${portfolioData[1]}%</span>
-            </div>
-            <div class="legend-node">
-                <div class="legend-meta"><div class="legend-color-dot" style="background:${colors[2]}"></div><span>Precious Metals / Hedge</span></div>
-                <span class="legend-value">${portfolioData[2]}%</span>
-            </div>
+    grid.innerHTML = items.map(item => {
+        const priceText = item.price != null ? `$${parseFloat(item.price).toFixed(2)}` : 'N/A';
+        const changeText = item.change != null ? `${item.change >= 0 ? '+' : ''}${parseFloat(item.change).toFixed(2)} (${item.changePercent != null ? parseFloat(item.changePercent).toFixed(2) : '0.00'}%)` : 'Unavailable';
+        const changeClass = item.change != null ? (item.change >= 0 ? 'pos-change' : 'neg-change') : '';
+        return `
+            <button type="button" class="commodity-card" data-symbol="${item.symbol}" aria-label="View ${item.name} details">
+                <div class="commodity-card-title">
+                    <span>${item.emoji}</span>
+                    <div>
+                        <div class="commodity-card-name">${item.name}</div>
+                        <div class="commodity-card-symbol">${item.symbol}</div>
+                    </div>
+                </div>
+                <div class="commodity-card-price">${priceText}</div>
+                <div class="commodity-card-change ${changeClass}">${changeText}</div>
+            </button>
         `;
+    }).join('');
+
+    grid.querySelectorAll('.commodity-card').forEach(card => {
+        card.addEventListener('click', () => {
+            selectCommodity(card.getAttribute('data-symbol'));
+        });
+    });
+}
+
+function updateCommoditySelectionUI(symbol) {
+    const cards = document.querySelectorAll('.commodity-card');
+    cards.forEach(card => {
+        card.classList.toggle('active', card.getAttribute('data-symbol') === symbol);
+    });
+}
+
+async function selectCommodity(symbol) {
+    if (!symbol) return;
+    updateCommoditySelectionUI(symbol);
+    const selected = commodityData.find(item => item.symbol === symbol);
+    const nameEl = document.getElementById('commodity-detail-name');
+    const symbolEl = document.getElementById('commodity-detail-symbol');
+    const iconEl = document.getElementById('commodity-detail-icon');
+    const priceEl = document.getElementById('commodity-detail-price');
+    const changeEl = document.getElementById('commodity-detail-change');
+    const noteEl = document.getElementById('commodity-detail-note');
+
+    if (!selected) return;
+
+    nameEl && (nameEl.innerText = selected.name);
+    symbolEl && (symbolEl.innerText = selected.symbol);
+    iconEl && (iconEl.innerText = selected.emoji);
+    priceEl && (priceEl.innerText = selected.price != null ? `$${parseFloat(selected.price).toFixed(2)}` : 'N/A');
+    
+    if (changeEl) {
+        if (selected.change != null) {
+            changeEl.innerText = `${selected.change >= 0 ? '+' : ''}${parseFloat(selected.change).toFixed(2)} (${selected.changePercent != null ? parseFloat(selected.changePercent).toFixed(2) : '0.00'}%)`;
+            changeEl.className = 'commodity-detail-change ' + (selected.change >= 0 ? 'pos-change' : 'neg-change');
+        } else {
+            changeEl.innerText = 'Unavailable';
+            changeEl.className = 'commodity-detail-change';
+        }
     }
+    noteEl && (noteEl.innerText = `Updated at ${selected.source || 'live'} • Refreshes every 4 hours.`);
+
+    const sparklineEl = document.getElementById('commodity-sparkline');
+    if (sparklineEl) {
+        sparklineEl.innerHTML = '<div class="commodity-note">Loading trend...</div>';
+        try {
+            const response = await fetchWithTimeout(`${BACKEND_URL}/api/commodities/history?symbol=${encodeURIComponent(symbol)}`);
+            const data = await safeJsonParse(response);
+            if (data?.values) {
+                const values = data.values.filter(entry => entry.close != null).map(entry => Number(entry.close)).reverse();
+                sparklineEl.innerHTML = renderSparkline(values);
+            }
+        } catch (error) {
+            sparklineEl.innerHTML = '<div class="commodity-note">Trend unavailable.</div>';
+        }
+    }
+}
+
+function renderSparkline(values) {
+    if (!values || values.length < 2) return '<div class="commodity-note">Not enough data.</div>';
+    const width = 320;
+    const height = 72;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    const points = values.map((value, index) => {
+        const x = (index / (values.length - 1)) * width;
+        const y = height - ((value - min) / range) * height;
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+    }).join(' ');
+
+    return `
+        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Trend sparkline">
+            <defs>
+                <linearGradient id="sparklineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#22c55e" />
+                    <stop offset="100%" stop-color="#38bdf8" />
+                </linearGradient>
+            </defs>
+            <polyline points="${points}" fill="none" stroke="url(#sparklineGradient)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+    `;
 }

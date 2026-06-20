@@ -5,16 +5,18 @@ export const BACKEND_URL = window.location.origin.includes('localhost')
 export function setupTabs(containerSelector) {
     const container = document.querySelector(containerSelector);
     if (!container) return;
-    const tabs = container.querySelectorAll('.tab-btn');
-    const panes = container.querySelectorAll('.tab-pane');
 
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            panes.forEach(p => p.classList.remove('active'));
-            tab.classList.add('active');
-            const targetPane = container.querySelector('#' + tab.dataset.tab);
-            if (targetPane) targetPane.classList.add('active');
+    const tabBtns = container.querySelectorAll('.panel-tab-btn');
+    const tabPanels = container.querySelectorAll('.tab-panel');
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabPanels.forEach(p => p.classList.remove('active-panel'));
+
+            btn.classList.add('active');
+            const targetId = btn.getAttribute('data-tab');
+            container.querySelector(`#${targetId}`)?.classList.add('active-panel');
         });
     });
 }
@@ -32,6 +34,7 @@ export async function fetchWithTimeout(resource, options = {}) {
 }
 
 export async function safeJsonParse(response) {
+    if (!response) return null;
     try {
         const text = await response.text();
         return text ? JSON.parse(text) : null;
