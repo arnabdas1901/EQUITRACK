@@ -299,15 +299,18 @@
                         <div class="input-container-inline">
                             <label for="ai-model-select">Analytical Quant Frame</label>
                             <select id="ai-model-select">
-                                <option value="dupont">3-Stage DuPont Decomposition</option>
-                                <option value="redflags">Automated Financial Red Flags Scan</option>
-                                <option value="dcf">Discounted Cash Flow (DCF) Intrinsic Value</option>
-                                <option value="benchmarking">Peer-Group Sector Benchmarking</option>
-                                <option disabled>───── Advanced Frames ─────</option>
-                                <option value="piotroski">Piotroski F-Score (Value Quality)</option>
-                                <option value="altman">Altman Z-Score (Distress Risk)</option>
-                                <option value="momentum">Technical Momentum & Price Action</option>
-                                <option value="moat">Buffett/Munger Economic Moat</option>
+                                <optgroup label="Core Analysis">
+                                    <option value="dupont">3-Stage DuPont Decomposition</option>
+                                    <option value="redflags">Automated Financial Red Flags Scan</option>
+                                    <option value="dcf">Discounted Cash Flow (DCF) Intrinsic Value</option>
+                                    <option value="benchmarking">Peer-Group Sector Benchmarking</option>
+                                </optgroup>
+                                <optgroup label="Advanced Frames">
+                                    <option value="piotroski">Piotroski F-Score (Value Quality)</option>
+                                    <option value="altman">Altman Z-Score (Distress Risk)</option>
+                                    <option value="momentum">Technical Momentum & Price Action</option>
+                                    <option value="moat">Buffett/Munger Economic Moat</option>
+                                </optgroup>
                             </select>
                         </div>
                         <button id="execute-ai-btn" class="primary-btn execution-btn"><i class="fa-solid fa-microchip"></i> Execute Deep Scan</button>
