@@ -60,6 +60,10 @@ function renderCalcInputs(type) {
                 <input type="number" id="calc-sip-amount" value="500" min="0" step="100">
             </div>
             <div class="input-field-group">
+                <label>Initial Lump Sum ($)</label>
+                <input type="number" id="calc-sip-lumpsum" value="0" min="0" step="500">
+            </div>
+            <div class="input-field-group">
                 <label>Expected Return Rate (Annual %)</label>
                 <input type="number" id="calc-sip-rate" value="12" min="0" max="100" step="0.5">
             </div>
@@ -177,16 +181,17 @@ function calculateCurrent() {
 
 function calculateSIP() {
     const baseMonthly = parseFloat(document.getElementById('calc-sip-amount').value) || 0;
+    const lumpSum     = parseFloat(document.getElementById('calc-sip-lumpsum')?.value) || 0;
     const annualRate  = parseFloat(document.getElementById('calc-sip-rate').value) || 0;
     const stepUpPct   = parseFloat(document.getElementById('calc-sip-stepup').value) || 0;
     const years       = parseInt(document.getElementById('calc-sip-years').value) || 0;
     const inflationRate = parseFloat(document.getElementById('calc-sip-inflation').value) || 0;
 
-    if (years <= 0 || baseMonthly <= 0) return;
+    if (years <= 0 || (baseMonthly <= 0 && lumpSum <= 0)) return;
 
     const monthlyRate = annualRate / 100 / 12;
-    let balance = 0;
-    let totalInvested = 0;
+    let balance = lumpSum;
+    let totalInvested = lumpSum;
     let currentMonthly = baseMonthly;
     const yearLabels = [];
     const yearInvestedCumulative = [];
