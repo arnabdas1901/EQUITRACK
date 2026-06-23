@@ -304,15 +304,20 @@
                                 <thead>
                                     <tr>
                                         <th>Asset Class</th>
-                                        <th>Target %</th>
-                                        <th>Suggested ETF</th>
                                         <th>Ticker</th>
+                                        <th>Target %</th>
+                                        <th>Allocation ($)</th>
+                                        <th>Yield</th>
+                                        <th>Fees (ER)</th>
                                     </tr>
                                 </thead>
                                 <tbody id="portfolio-etf-body">
                                     <!-- Populated by JS -->
                                 </tbody>
                             </table>
+                        </div>
+                        <div id="portfolio-summary-bar" class="portfolio-summary-bar">
+                            <!-- Populated by JS -->
                         </div>
                     </div>
 
@@ -322,6 +327,7 @@
                         <div class="chart-wrapper-box" style="height: 300px;">
                             <canvas id="portfolioProjectionChart"></canvas>
                         </div>
+                        <p class="projection-disclaimer"><i class="fa-solid fa-circle-info"></i> <strong>Disclaimer:</strong> Projections use trailing 10-year historical Compound Annual Growth Rates (CAGR). Historical performance is not a guarantee of future returns. Actual returns will vary due to market volatility.</p>
                     </div>
                 </div>
             </section>
