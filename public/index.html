@@ -514,30 +514,116 @@
                     <p class="subtitle">Global raw materials and resource tracking</p>
                 </div>
                 
-                <div class="commodities-widget" aria-label="Commodity ETF watchlist">
-                    <div class="commodities-header">
-                        <div>
-                            <h3>Commodity Watchlist</h3>
-                            <p>ETF proxies for flagship commodity exposure.</p>
-                        </div>
+                <div class="search-wrapper">
+                    <div class="search-bar-container">
+                        <i class="fa-solid fa-search search-icon"></i>
+                        <input type="text" id="commodity-search-input" aria-label="Search commodity" placeholder="Search commodity by symbol or name (e.g., Gold, Silver, GLD)..." autocomplete="off">
+                        <button id="commodity-search-btn" class="primary-btn">Search</button>
                     </div>
-                    <div class="commodities-body">
-                        <div id="commodity-selector-grid" class="commodity-selector-grid" role="list">
-                            <div class="commodity-note" style="padding: 20px;">Logic pending implementation...</div>
-                        </div>
-                        <div class="commodity-detail-card" id="commodity-detail-card">
-                            <div class="commodity-detail-header">
-                                <span id="commodity-detail-icon" class="commodity-detail-icon">🟡</span>
+                </div>
+
+                <p class="crypto-landing-note">Tap a card below or search by symbol/name to load commodity details.</p>
+
+                <div class="crypto-brackets-container" id="commodity-landing-view">
+                    <h3>Top 6 Commodities</h3>
+                    <div id="commodity-brackets-grid" class="crypto-brackets-grid" role="list">
+                        <!-- Layout Mockup -->
+                        <button class="crypto-bracket-card" >
+                            <div class="crypto-bracket-header">
+                                <span class="crypto-bracket-emoji">🟡</span>
                                 <div>
-                                    <div id="commodity-detail-name" class="commodity-detail-name">Gold</div>
-                                    <div id="commodity-detail-symbol" class="commodity-detail-symbol">GLD</div>
+                                    <div class="crypto-bracket-name">Gold</div>
+                                    <div class="crypto-bracket-symbol">GLD</div>
                                 </div>
                             </div>
-                            <div class="commodity-detail-price" id="commodity-detail-price">$0.00</div>
-                            <div class="commodity-detail-change" id="commodity-detail-change">--</div>
-                            <div class="commodity-sparkline" id="commodity-sparkline" aria-label="Commodity mini trend chart"></div>
-                            <div class="commodity-note" id="commodity-detail-note">Select a commodity to view details.</div>
+                            <div class="crypto-bracket-price">$2,450.00</div>
+                            <div class="crypto-bracket-change pos-change">+1.24%</div>
+                        </button>
+                        <button class="crypto-bracket-card" >
+                            <div class="crypto-bracket-header">
+                                <span class="crypto-bracket-emoji">🪙</span>
+                                <div>
+                                    <div class="crypto-bracket-name">Silver</div>
+                                    <div class="crypto-bracket-symbol">SLV</div>
+                                </div>
+                            </div>
+                            <div class="crypto-bracket-price">$28.50</div>
+                            <div class="crypto-bracket-change neg-change">-0.50%</div>
+                        </button>
+                        <button class="crypto-bracket-card" >
+                            <div class="crypto-bracket-header">
+                                <span class="crypto-bracket-emoji">🛢️</span>
+                                <div>
+                                    <div class="crypto-bracket-name">Crude Oil</div>
+                                    <div class="crypto-bracket-symbol">USO</div>
+                                </div>
+                            </div>
+                            <div class="crypto-bracket-price">$82.10</div>
+                            <div class="crypto-bracket-change pos-change">+2.10%</div>
+                        </button>
+                        <button class="crypto-bracket-card" >
+                            <div class="crypto-bracket-header">
+                                <span class="crypto-bracket-emoji">🔥</span>
+                                <div>
+                                    <div class="crypto-bracket-name">Natural Gas</div>
+                                    <div class="crypto-bracket-symbol">UNG</div>
+                                </div>
+                            </div>
+                            <div class="crypto-bracket-price">$2.15</div>
+                            <div class="crypto-bracket-change neg-change">-1.05%</div>
+                        </button>
+                        <button class="crypto-bracket-card" >
+                            <div class="crypto-bracket-header">
+                                <span class="crypto-bracket-emoji">🟠</span>
+                                <div>
+                                    <div class="crypto-bracket-name">Copper</div>
+                                    <div class="crypto-bracket-symbol">CPER</div>
+                                </div>
+                            </div>
+                            <div class="crypto-bracket-price">$4.20</div>
+                            <div class="crypto-bracket-change pos-change">+0.80%</div>
+                        </button>
+                        <button class="crypto-bracket-card" >
+                            <div class="crypto-bracket-header">
+                                <span class="crypto-bracket-emoji">💠</span>
+                                <div>
+                                    <div class="crypto-bracket-name">Platinum</div>
+                                    <div class="crypto-bracket-symbol">PPLT</div>
+                                </div>
+                            </div>
+                            <div class="crypto-bracket-price">$980.00</div>
+                            <div class="crypto-bracket-change pos-change">+0.20%</div>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="commodity-results-container" class="hidden-element">
+                    <div class="equity-results-header">
+                        <button id="commodity-back-btn" class="secondary-btn" >← Back to Top Commodities</button>
+                    </div>
+                    <div class="ticker-hero-card">
+                        <div class="hero-meta">
+                            <div class="crypto-hero-identity">
+                                <span id="commodity-icon-display" style="font-size: 32px;">🟡</span>
+                                <div>
+                                    <h2 id="commodity-name-display">Gold</h2>
+                                    <div class="ticker-badges">
+                                        <span id="commodity-ticker-badge" class="badge">GLD</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+                        <div class="hero-pricing">
+                            <div id="commodity-live-price-display" class="price-value">$2,450.00</div>
+                            <div id="commodity-live-change-display" class="price-change-percent pos-change">+1.24%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="company-profile-card" style="margin-top: 24px;">
+                        <h3>Commodity Description</h3>
+                        <p id="commodity-description-display" style="color: var(--text-secondary-muted); line-height: 1.6; margin-top: 12px;">
+                            Gold is a chemical element and a precious metal that has been used for coinage, jewelry, and other arts throughout recorded history. In financial markets, it is often seen as a safe-haven asset and a hedge against inflation. The GLD ticker represents the SPDR Gold Trust, an exchange-traded fund designed to track the price of gold.
+                        </p>
                     </div>
                 </div>
             </section>

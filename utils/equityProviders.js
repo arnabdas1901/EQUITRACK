@@ -163,11 +163,42 @@ async function fetchFmpMetrics(symbol) {
     return { error: 'FMP metrics endpoint unavailable or plan unsupported' };
 }
 
+async function fetchAlphaVantageCommodity(functionName, interval = 'daily') {
+    if (!process.env.ALPHAVANTAGE_API_KEY) {
+        return { error: 'Missing Alpha Vantage API key' };
+    }
+
+    const response = await fetch(`https://www.alphavantage.co/query?function=${functionName}&interval=${interval}&apikey=${process.env.ALPHAVANTAGE_API_KEY}`);
+    const data = await response.json();
+
+    if (data['Information'] || data['Note']) {
+        return { error: data['Information'] || data['Note'], raw: data };
+    }
+
+    if (!data.data || !Array.isArray(data.data) || data.data.length < 2) {
+        return { error: `Invalid Alpha Vantage response for ${functionName}`, raw: data };
+    }
+
+    const currentPrice = Number(data.data[0].value);
+    const previousPrice = Number(data.data[1].value);
+    const change = currentPrice - previousPrice;
+    const changePercent = (change / previousPrice) * 100;
+
+    return {
+        price: currentPrice,
+        change: change,
+        changePercent: changePercent,
+        lastUpdated: data.data[0].date,
+        raw: data.data.slice(0, 30) // Keep the last 30 periods for sparkline
+    };
+}
+
 module.exports = {
     fetchFinnhubQuote,
     fetchFinnhubHistory,
     fetchTwelveDataQuote,
     fetchFmpQuote,
     fetchYahooIndexQuote,
-    fetchFmpMetrics
+    fetchFmpMetrics,
+    fetchAlphaVantageCommodity
 };

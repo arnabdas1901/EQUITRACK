@@ -4,6 +4,7 @@ import { setupInflationTracker } from './modules/macro.js';
 import { setupAiAdvisor } from './modules/ai.js';
 import { setupCalculators } from './modules/calculators.js';
 import { setupPortfolioBuilder } from './modules/portfolio.js';
+import { initCommoditiesDashboard } from './modules/commodities.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Core UI Navigation
@@ -15,6 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Crypto Tracker
     setupCryptoTracker();
+
+    // 2.5 Commodities Tracker
+    initCommoditiesDashboard();
 
     // 3. Macro & Inflation
     setupInflationTracker();
