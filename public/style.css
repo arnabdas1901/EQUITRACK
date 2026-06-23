@@ -268,168 +268,121 @@ select {
     gap: 6px;
 }
 
-.commodities-widget {
+/* --- Market News Widget --- */
+.news-widget {
     margin-top: 24px;
     background-color: rgba(15, 23, 42, 0.95);
     border: 1px solid rgba(37, 99, 235, 0.12);
     border-radius: 16px;
-    padding: 18px;
+    padding: 24px;
 }
 
-.commodities-header {
+.news-header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    margin-bottom: 18px;
-    gap: 16px;
+    margin-bottom: 20px;
 }
 
-.commodities-header h3 {
+.news-header h3 {
     margin-bottom: 6px;
-    font-size: 1.05rem;
+    font-size: 1.1rem;
+    color: var(--text-primary-white);
 }
 
-.commodities-header p {
+.news-header p {
     color: var(--text-secondary-muted);
     font-size: 0.92rem;
 }
 
-.commodities-body {
+.news-grid {
     display: grid;
-    grid-template-columns: 1.65fr 1fr;
-    gap: 18px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
 }
 
-.commodity-selector-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-}
-
-.commodity-card {
+.news-card {
     background-color: var(--bg-card-midnight);
-    border: 1px solid var(--border-cyan-glow);
-    border-radius: 14px;
-    padding: 16px;
-    cursor: pointer;
-    transition: transform var(--transition-speed), border-color var(--transition-speed), background-color var(--transition-speed);
-}
-
-.commodity-card:hover,
-.commodity-card.active {
-    transform: translateY(-1px);
-    border-color: var(--neon-blue-accent);
-    background-color: rgba(37, 99, 235, 0.08);
-}
-
-.commodity-card-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.commodity-card-title span {
-    font-size: 1.25rem;
-}
-
-.commodity-card-name {
-    color: var(--text-primary-white);
-    font-weight: 700;
-    font-size: 1rem;
-}
-
-.commodity-card-symbol {
-    color: var(--text-secondary-muted);
-    font-size: 0.82rem;
-}
-
-.commodity-card-price {
-    color: var(--neon-cyan-vibrant);
-    font-family: var(--font-mono);
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin-top: 6px;
-}
-
-.commodity-card-change {
-    font-size: 0.85rem;
-    margin-top: 4px;
-}
-
-.commodity-detail-card {
-    background-color: var(--bg-card-midnight);
-    border: 1px solid var(--border-cyan-glow);
-    border-radius: 16px;
-    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    min-height: 260px;
+    text-decoration: none;
+    transition: transform var(--transition-speed), border-color var(--transition-speed), box-shadow var(--transition-speed);
 }
 
-.commodity-detail-header {
+.news-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(37, 99, 235, 0.4);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.news-thumbnail {
+    height: 160px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.news-content {
+    padding: 16px;
     display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.news-meta {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 14px;
+    margin-bottom: 10px;
+    font-size: 0.8rem;
 }
 
-.commodity-detail-icon {
-    background: rgba(255,255,255,0.08);
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    display: grid;
-    place-items: center;
-    font-size: 1.35rem;
-}
-
-.commodity-detail-name {
-    font-size: 1.1rem;
-    font-weight: 700;
-}
-
-.commodity-detail-symbol {
-    color: var(--text-secondary-muted);
-    font-size: 0.85rem;
-}
-
-.commodity-detail-price {
+.news-source {
     color: var(--neon-cyan-vibrant);
-    font-family: var(--font-mono);
-    font-size: 2rem;
-    font-weight: 700;
-}
-
-.commodity-detail-change {
-    font-size: 0.95rem;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.commodity-sparkline {
-    min-height: 72px;
-    width: 100%;
-    border-radius: 12px;
-    background: rgba(255,255,255,0.03);
-    position: relative;
+.news-date {
+    color: var(--text-secondary-muted);
 }
 
-.commodity-note {
+.news-headline {
+    color: var(--text-primary-white);
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.news-summary {
     color: var(--text-secondary-muted);
     font-size: 0.9rem;
+    line-height: 1.5;
+    margin-top: auto;
 }
 
-@media (max-width: 1100px) {
-    .commodities-body {
-        grid-template-columns: 1fr;
-    }
+.news-note {
+    color: var(--text-secondary-muted);
+    font-size: 0.95rem;
+    padding: 20px;
+    text-align: center;
+    grid-column: 1 / -1;
 }
 
-@media (max-width: 700px) {
-    .commodity-selector-grid {
-        grid-template-columns: 1fr;
-    }
+.news-loading-placeholder {
+    color: var(--text-secondary-muted);
+    padding: 40px;
+    text-align: center;
+    grid-column: 1 / -1;
+    animation: pulse 2s infinite;
 }
+
 
 .index-label {
     color: var(--text-secondary-muted);
@@ -1804,4 +1757,139 @@ select {
     .commodity-detail-price {
         font-size: 1.35rem;
     }
+}
+
+/* --- Commodities Dashboard Widget Layout --- */
+.commodities-widget {
+    margin-top: 24px;
+    background-color: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(37, 99, 235, 0.12);
+    border-radius: 16px;
+    padding: 18px;
+}
+.commodities-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    gap: 16px;
+}
+.commodities-header h3 {
+    margin-bottom: 6px;
+    font-size: 1.05rem;
+}
+.commodities-header p {
+    color: var(--text-secondary-muted);
+    font-size: 0.92rem;
+}
+.commodities-body {
+    display: grid;
+    grid-template-columns: 1.65fr 1fr;
+    gap: 18px;
+}
+.commodity-selector-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.commodity-card {
+    background-color: var(--bg-card-midnight);
+    border: 1px solid var(--border-cyan-glow);
+    border-radius: 14px;
+    padding: 16px;
+    cursor: pointer;
+    transition: transform var(--transition-speed), border-color var(--transition-speed), background-color var(--transition-speed);
+}
+.commodity-card:hover, .commodity-card.active {
+    transform: translateY(-1px);
+    border-color: var(--neon-blue-accent);
+    background-color: rgba(37, 99, 235, 0.08);
+}
+.commodity-card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.commodity-card-title span {
+    font-size: 1.25rem;
+}
+.commodity-card-name {
+    color: var(--text-primary-white);
+    font-weight: 700;
+    font-size: 1rem;
+}
+.commodity-card-symbol {
+    color: var(--text-secondary-muted);
+    font-size: 0.82rem;
+}
+.commodity-card-price {
+    color: var(--neon-cyan-vibrant);
+    font-family: var(--font-mono);
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-top: 6px;
+}
+.commodity-card-change {
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+.commodity-detail-card {
+    background-color: var(--bg-card-midnight);
+    border: 1px solid var(--border-cyan-glow);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 260px;
+}
+.commodity-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.commodity-detail-icon {
+    background: rgba(255,255,255,0.08);
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    font-size: 1.35rem;
+}
+.commodity-detail-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+.commodity-detail-symbol {
+    color: var(--text-secondary-muted);
+    font-size: 0.85rem;
+}
+.commodity-detail-price {
+    color: var(--neon-cyan-vibrant);
+    font-family: var(--font-mono);
+    font-size: 2rem;
+    font-weight: 700;
+}
+.commodity-detail-change {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+.commodity-sparkline {
+    min-height: 72px;
+    width: 100%;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.03);
+    position: relative;
+}
+.commodity-note {
+    color: var(--text-secondary-muted);
+    font-size: 0.9rem;
+}
+@media (max-width: 1100px) {
+    .commodities-body { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+    .commodity-selector-grid { grid-template-columns: 1fr; }
 }

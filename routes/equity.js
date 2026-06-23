@@ -204,4 +204,35 @@ router.get('/twelvedata/statements', async (req, res) => {
     }
 });
 
+const NEWS_CACHE = {
+    lastFetched: 0,
+    ttlMs: 5 * 60 * 1000, // 5 minutes
+    data: null,
+};
+
+// General Market News
+router.get('/finnhub/news', async (req, res) => {
+    const now = Date.now();
+    if (NEWS_CACHE.data && now - NEWS_CACHE.lastFetched < NEWS_CACHE.ttlMs) {
+        return res.json(NEWS_CACHE.data);
+    }
+
+    try {
+        const response = await fetch(`https://finnhub.io/api/v1/news?category=general&token=${process.env.FINNHUB_API_KEY}`);
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+            NEWS_CACHE.data = data;
+            NEWS_CACHE.lastFetched = now;
+        }
+        res.json(data);
+    } catch (error) {
+        console.error("Finnhub News Error:", error);
+        if (NEWS_CACHE.data) {
+            return res.json(NEWS_CACHE.data);
+        }
+        res.status(500).json({ error: "Failed to fetch market news" });
+    }
+});
+
 module.exports = router;

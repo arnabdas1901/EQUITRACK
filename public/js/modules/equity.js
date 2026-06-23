@@ -3,14 +3,13 @@ import { BACKEND_URL, fetchWithTimeout, safeJsonParse, showToast, formatLargeCur
 let equityChartInstance = null;
 let rawHistoricalData = [];
 let activeEquityTicker = null;
-let commodityData = [];
 
 export function loadDashboard() {
     setupTabs('#dashboard-equity');
     setupSearch();
     setupTimeframeSelectors();
     fetchLiveIndexValues();
-    setupCommodityWatchlist();
+    setupMarketNews();
 }
 
 function setupSearch() {
@@ -297,129 +296,46 @@ async function fetchLiveIndexValues() {
     }
 }
 
-// --- Commodities ---
-async function setupCommodityWatchlist() {
-    try {
-        const response = await fetchWithTimeout(`${BACKEND_URL}/api/commodities`);
-        const payload = await safeJsonParse(response);
-        commodityData = payload.commodities || [];
-        renderCommodityList(commodityData);
-        if (commodityData.length) {
-            selectCommodity(commodityData[0].symbol);
-        }
-    } catch (error) {
-        console.warn('Failed to load commodity watchlist:', error);
-        const grid = document.getElementById('commodity-selector-grid');
-        if (grid) {
-            grid.innerHTML = '<div class="commodity-card">Unable to load commodity data.</div>';
-        }
-    }
-}
-
-function renderCommodityList(items) {
-    const grid = document.getElementById('commodity-selector-grid');
+// --- Market News ---
+async function setupMarketNews() {
+    const grid = document.getElementById('market-news-grid');
     if (!grid) return;
 
-    grid.innerHTML = items.map(item => {
-        const priceText = item.price != null ? `$${parseFloat(item.price).toFixed(2)}` : 'N/A';
-        const changeText = item.change != null ? `${item.change >= 0 ? '+' : ''}${parseFloat(item.change).toFixed(2)} (${item.changePercent != null ? parseFloat(item.changePercent).toFixed(2) : '0.00'}%)` : 'Unavailable';
-        const changeClass = item.change != null ? (item.change >= 0 ? 'pos-change' : 'neg-change') : '';
+    try {
+        const response = await fetchWithTimeout(`${BACKEND_URL}/api/finnhub/news`);
+        const newsData = await safeJsonParse(response);
+        
+        if (Array.isArray(newsData) && newsData.length > 0) {
+            renderNewsGrid(newsData.slice(0, 6)); // Display top 6 news items
+        } else {
+            grid.innerHTML = '<div class="news-note">No recent market news available.</div>';
+        }
+    } catch (error) {
+        console.warn('Failed to load market news:', error);
+        grid.innerHTML = '<div class="news-note">Unable to load news data. Please try again later.</div>';
+    }
+}
+
+function renderNewsGrid(newsItems) {
+    const grid = document.getElementById('market-news-grid');
+    if (!grid) return;
+
+    grid.innerHTML = newsItems.map(item => {
+        const imageUrl = item.image || 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=1470&auto=format&fit=crop';
+        const date = new Date(item.datetime * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        
         return `
-            <button type="button" class="commodity-card" data-symbol="${item.symbol}" aria-label="View ${item.name} details">
-                <div class="commodity-card-title">
-                    <span>${item.emoji}</span>
-                    <div>
-                        <div class="commodity-card-name">${item.name}</div>
-                        <div class="commodity-card-symbol">${item.symbol}</div>
+            <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="news-card">
+                <div class="news-thumbnail" style="background-image: url('${imageUrl}')"></div>
+                <div class="news-content">
+                    <div class="news-meta">
+                        <span class="news-source">${item.source}</span>
+                        <span class="news-date">${date}</span>
                     </div>
+                    <h4 class="news-headline">${item.headline}</h4>
+                    <p class="news-summary">${item.summary ? item.summary.substring(0, 100) + '...' : ''}</p>
                 </div>
-                <div class="commodity-card-price">${priceText}</div>
-                <div class="commodity-card-change ${changeClass}">${changeText}</div>
-            </button>
+            </a>
         `;
     }).join('');
-
-    grid.querySelectorAll('.commodity-card').forEach(card => {
-        card.addEventListener('click', () => {
-            selectCommodity(card.getAttribute('data-symbol'));
-        });
-    });
-}
-
-function updateCommoditySelectionUI(symbol) {
-    const cards = document.querySelectorAll('.commodity-card');
-    cards.forEach(card => {
-        card.classList.toggle('active', card.getAttribute('data-symbol') === symbol);
-    });
-}
-
-async function selectCommodity(symbol) {
-    if (!symbol) return;
-    updateCommoditySelectionUI(symbol);
-    const selected = commodityData.find(item => item.symbol === symbol);
-    const nameEl = document.getElementById('commodity-detail-name');
-    const symbolEl = document.getElementById('commodity-detail-symbol');
-    const iconEl = document.getElementById('commodity-detail-icon');
-    const priceEl = document.getElementById('commodity-detail-price');
-    const changeEl = document.getElementById('commodity-detail-change');
-    const noteEl = document.getElementById('commodity-detail-note');
-
-    if (!selected) return;
-
-    nameEl && (nameEl.innerText = selected.name);
-    symbolEl && (symbolEl.innerText = selected.symbol);
-    iconEl && (iconEl.innerText = selected.emoji);
-    priceEl && (priceEl.innerText = selected.price != null ? `$${parseFloat(selected.price).toFixed(2)}` : 'N/A');
-    
-    if (changeEl) {
-        if (selected.change != null) {
-            changeEl.innerText = `${selected.change >= 0 ? '+' : ''}${parseFloat(selected.change).toFixed(2)} (${selected.changePercent != null ? parseFloat(selected.changePercent).toFixed(2) : '0.00'}%)`;
-            changeEl.className = 'commodity-detail-change ' + (selected.change >= 0 ? 'pos-change' : 'neg-change');
-        } else {
-            changeEl.innerText = 'Unavailable';
-            changeEl.className = 'commodity-detail-change';
-        }
-    }
-    noteEl && (noteEl.innerText = `Updated at ${selected.source || 'live'} • Refreshes every 4 hours.`);
-
-    const sparklineEl = document.getElementById('commodity-sparkline');
-    if (sparklineEl) {
-        sparklineEl.innerHTML = '<div class="commodity-note">Loading trend...</div>';
-        try {
-            const response = await fetchWithTimeout(`${BACKEND_URL}/api/commodities/history?symbol=${encodeURIComponent(symbol)}`);
-            const data = await safeJsonParse(response);
-            if (data?.values) {
-                const values = data.values.filter(entry => entry.close != null).map(entry => Number(entry.close)).reverse();
-                sparklineEl.innerHTML = renderSparkline(values);
-            }
-        } catch (error) {
-            sparklineEl.innerHTML = '<div class="commodity-note">Trend unavailable.</div>';
-        }
-    }
-}
-
-function renderSparkline(values) {
-    if (!values || values.length < 2) return '<div class="commodity-note">Not enough data.</div>';
-    const width = 320;
-    const height = 72;
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min || 1;
-    const points = values.map((value, index) => {
-        const x = (index / (values.length - 1)) * width;
-        const y = height - ((value - min) / range) * height;
-        return `${x.toFixed(2)},${y.toFixed(2)}`;
-    }).join(' ');
-
-    return `
-        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Trend sparkline">
-            <defs>
-                <linearGradient id="sparklineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="#22c55e" />
-                    <stop offset="100%" stop-color="#38bdf8" />
-                </linearGradient>
-            </defs>
-            <polyline points="${points}" fill="none" stroke="url(#sparklineGradient)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-    `;
 }

@@ -9,22 +9,6 @@ const INDEX_QUOTE_CACHE = {
     data: null,
 };
 
-const COMMODITY_PROXIES = [
-    { id: 'gold', name: 'Gold', emoji: '🟡', symbol: 'GLD', description: 'SPDR Gold Shares' },
-    { id: 'silver', name: 'Silver', emoji: '🪙', symbol: 'SLV', description: 'iShares Silver Trust' },
-    { id: 'crude_oil', name: 'Crude Oil', emoji: '🛢️', symbol: 'USO', description: 'United States Oil Fund' },
-    { id: 'natural_gas', name: 'Natural Gas', emoji: '🔥', symbol: 'UNG', description: 'United States Natural Gas Fund' },
-    { id: 'copper', name: 'Copper', emoji: '🟠', symbol: 'CPER', description: 'United States Copper Index Fund' },
-    { id: 'platinum', name: 'Platinum', emoji: '💠', symbol: 'PPLT', description: 'abrdn Physical Platinum Shares' },
-    { id: 'wheat', name: 'Wheat', emoji: '🌾', symbol: 'WEAT', description: 'Teucrium Wheat Fund' },
-    { id: 'corn', name: 'Corn', emoji: '🌽', symbol: 'CORN', description: 'Teucrium Corn Fund' },
-];
-
-const COMMODITY_QUOTE_CACHE = {
-    lastFetched: 0,
-    ttlMs: 4 * 60 * 60 * 1000,
-    data: null,
-};
 
 function isRealIndexQuote(result, min, max) {
     const price = Number(result?.price);
@@ -140,70 +124,6 @@ router.get('/indices', async (req, res) => {
     }
 });
 
-router.get('/commodities', async (req, res) => {
-    const now = Date.now();
-    if (COMMODITY_QUOTE_CACHE.data && now - COMMODITY_QUOTE_CACHE.lastFetched < COMMODITY_QUOTE_CACHE.ttlMs) {
-        return res.json(COMMODITY_QUOTE_CACHE.data);
-    }
 
-    try {
-        const commodityQuotes = await Promise.all(COMMODITY_PROXIES.map(async (item) => {
-            let quote = null;
-            if (process.env.TWELVEDATA_API_KEY) {
-                quote = await fetchTwelveDataQuote(item.symbol);
-            }
-            if (!quote || quote.error) {
-                quote = await fetchFinnhubQuote(item.symbol);
-            }
-
-            return {
-                id: item.id,
-                name: item.name,
-                emoji: item.emoji,
-                symbol: item.symbol,
-                description: item.description,
-                price: quote?.price ?? null,
-                change: quote?.change ?? null,
-                changePercent: quote?.changePercent ?? null,
-                source: quote?.error ? 'Unavailable' : 'TwelveData',
-            };
-        }));
-
-        const payload = {
-            commodities: commodityQuotes,
-            fetchedAt: new Date().toISOString(),
-        };
-
-        COMMODITY_QUOTE_CACHE.data = payload;
-        COMMODITY_QUOTE_CACHE.lastFetched = now;
-        res.json(payload);
-    } catch (error) {
-        console.error('Commodities Error:', error);
-        if (COMMODITY_QUOTE_CACHE.data) {
-            return res.json(COMMODITY_QUOTE_CACHE.data);
-        }
-        res.status(500).json({ error: 'Failed to fetch commodity quotes' });
-    }
-});
-
-router.get('/commodities/history', async (req, res) => {
-    const symbol = requireTicker(req, res);
-    if (!symbol) return;
-    if (!process.env.TWELVEDATA_API_KEY) return res.status(500).json({ error: 'Missing TwelveData API key' });
-
-    try {
-        const response = await fetch(
-            `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=14&apikey=${process.env.TWELVEDATA_API_KEY}`
-        );
-        const data = await response.json();
-        if (data?.status === 'error') {
-            return res.status(500).json({ error: data.message || 'Invalid TwelveData history response', raw: data });
-        }
-        res.json(data);
-    } catch (error) {
-        console.error('Commodity history error:', error);
-        res.status(500).json({ error: 'Failed to fetch commodity history' });
-    }
-});
 
 module.exports = router;

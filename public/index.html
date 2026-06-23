@@ -35,11 +35,15 @@
                 </button>
                 <button class="nav-item" data-target="dashboard-ai">
                     <i class="fa-solid fa-brain"></i>
-                    <span>AI Advisor</span>
+                    <span>AI Analyst</span>
                 </button>
                 <button class="nav-item" data-target="dashboard-crypto">
                     <i class="fa-solid fa-coins"></i>
                     <span>Crypto Analysis</span>
+                </button>
+                <button class="nav-item" data-target="dashboard-commodities">
+                    <i class="fa-solid fa-wheat-awn"></i>
+                    <span>Commodities</span>
                 </button>
                 <button class="nav-item" data-target="dashboard-inflation">
                     <i class="fa-solid fa-earth-americas"></i>
@@ -92,27 +96,16 @@
                         </div>
                     </div>
 
-                    <div class="commodities-widget" aria-label="Commodity ETF watchlist">
-                        <div class="commodities-header">
+                    <div class="news-widget" aria-label="Market News">
+                        <div class="news-header">
                             <div>
-                                <h3>Commodity Watchlist</h3>
-                                <p>ETF proxies for flagship commodity exposure with 4-hour caching.</p>
+                                <h3>Market News</h3>
+                                <p>Live updates on US equities and general market trends.</p>
                             </div>
                         </div>
-                        <div class="commodities-body">
-                            <div id="commodity-selector-grid" class="commodity-selector-grid" role="list"></div>
-                            <div class="commodity-detail-card" id="commodity-detail-card">
-                                <div class="commodity-detail-header">
-                                    <span id="commodity-detail-icon" class="commodity-detail-icon">🟡</span>
-                                    <div>
-                                        <div id="commodity-detail-name" class="commodity-detail-name">Gold</div>
-                                        <div id="commodity-detail-symbol" class="commodity-detail-symbol">GLD</div>
-                                    </div>
-                                </div>
-                                <div class="commodity-detail-price" id="commodity-detail-price">$0.00</div>
-                                <div class="commodity-detail-change" id="commodity-detail-change">--</div>
-                                <div class="commodity-sparkline" id="commodity-sparkline" aria-label="Commodity mini trend chart"></div>
-                                <div class="commodity-note" id="commodity-detail-note">Select a commodity to view price and mini trend.</div>
+                        <div class="news-body">
+                            <div id="market-news-grid" class="news-grid" role="list">
+                                <div class="news-loading-placeholder">Loading latest market news...</div>
                             </div>
                         </div>
                     </div>
@@ -334,7 +327,7 @@
 
             <section id="dashboard-ai" class="dashboard-viewport">
                 <div class="dashboard-header-block">
-                    <h1>Algorithmic Quant & AI Advisor Terminal</h1>
+                    <h1>Algorithmic Quant & AI Analyst Terminal</h1>
                     <p class="subtitle">Advanced quantitative logic processing structural models, safety parameters, and intrinsic equations</p>
                 </div>
 
@@ -371,7 +364,7 @@
                         <div class="terminal-title">quant-engine-v4.0.1 // core_analysis_stream</div>
                     </div>
                     <div id="ai-terminal-output" class="terminal-screen-body">
-                        <span class="terminal-prompt">&gt; Groq AI advisor online. Enter a ticker and select an analysis frame.</span>
+                        <span class="terminal-prompt">&gt; Groq AI analyst online. Enter a ticker and select an analysis frame.</span>
                     </div>
                     <div class="gemini-integration-notice">
                         <i class="fa-solid fa-robot gemini-icon"></i>
@@ -510,6 +503,40 @@
                                     </table>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="dashboard-commodities" class="dashboard-viewport">
+                <div class="dashboard-header-block">
+                    <h1>Commodities Intelligence</h1>
+                    <p class="subtitle">Global raw materials and resource tracking</p>
+                </div>
+                
+                <div class="commodities-widget" aria-label="Commodity ETF watchlist">
+                    <div class="commodities-header">
+                        <div>
+                            <h3>Commodity Watchlist</h3>
+                            <p>ETF proxies for flagship commodity exposure.</p>
+                        </div>
+                    </div>
+                    <div class="commodities-body">
+                        <div id="commodity-selector-grid" class="commodity-selector-grid" role="list">
+                            <div class="commodity-note" style="padding: 20px;">Logic pending implementation...</div>
+                        </div>
+                        <div class="commodity-detail-card" id="commodity-detail-card">
+                            <div class="commodity-detail-header">
+                                <span id="commodity-detail-icon" class="commodity-detail-icon">🟡</span>
+                                <div>
+                                    <div id="commodity-detail-name" class="commodity-detail-name">Gold</div>
+                                    <div id="commodity-detail-symbol" class="commodity-detail-symbol">GLD</div>
+                                </div>
+                            </div>
+                            <div class="commodity-detail-price" id="commodity-detail-price">$0.00</div>
+                            <div class="commodity-detail-change" id="commodity-detail-change">--</div>
+                            <div class="commodity-sparkline" id="commodity-sparkline" aria-label="Commodity mini trend chart"></div>
+                            <div class="commodity-note" id="commodity-detail-note">Select a commodity to view details.</div>
                         </div>
                     </div>
                 </div>
