@@ -245,6 +245,53 @@ async function fetchAlphaVantageCommodity(functionName, interval = 'daily') {
     };
 }
 
+async function fetchAlphaVantageForexDaily(fromSymbol, toSymbol) {
+    if (!process.env.ALPHAVANTAGE_API_KEY) {
+        return { error: 'Missing Alpha Vantage API key' };
+    }
+
+    try {
+        const url = `https://www.alphavantage.co/query?function=FX_DAILY&from_symbol=${fromSymbol}&to_symbol=${toSymbol}&apikey=${process.env.ALPHAVANTAGE_API_KEY}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data['Information'] || data['Note']) {
+            return { error: data['Information'] || data['Note'], raw: data };
+        }
+
+        const timeSeries = data['Time Series FX (Daily)'];
+        if (!timeSeries) {
+            return { error: 'Invalid or missing Time Series data', raw: data };
+        }
+
+        const dates = Object.keys(timeSeries).sort((a, b) => new Date(a) - new Date(b));
+        if (dates.length < 2) {
+            return { error: 'Not enough data points', raw: data };
+        }
+
+        const latestDate = dates[dates.length - 1];
+        const previousDate = dates[dates.length - 2];
+        const currentPrice = Number(timeSeries[latestDate]['4. close']);
+        const previousPrice = Number(timeSeries[previousDate]['4. close']);
+        const change = currentPrice - previousPrice;
+        const changePercent = (change / previousPrice) * 100;
+
+        const chartData = dates.map(date => ({
+            time: new Date(date).getTime() / 1000,
+            close: Number(timeSeries[date]['4. close'])
+        }));
+
+        return {
+            price: currentPrice,
+            change: change,
+            changePercent: changePercent,
+            chartData: chartData.slice(-252) // approx 1 year of trading days
+        };
+    } catch (err) {
+        return { error: err.message };
+    }
+}
+
 module.exports = {
     fetchFinnhubQuote,
     fetchFinnhubHistory,
@@ -253,5 +300,6 @@ module.exports = {
     fetchYahooIndexQuote,
     fetchYahooChart,
     fetchFmpMetrics,
-    fetchAlphaVantageCommodity
+    fetchAlphaVantageCommodity,
+    fetchAlphaVantageForexDaily
 };

@@ -5,6 +5,7 @@ import { setupAiAdvisor } from './modules/ai.js';
 import { setupCalculators } from './modules/calculators.js';
 import { setupPortfolioBuilder } from './modules/portfolio.js';
 import { initCommoditiesDashboard } from './modules/commodities.js';
+import { setupForexTracker } from './modules/forex.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Core UI Navigation
@@ -25,6 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4. AI Advisor
     setupAiAdvisor();
+
+    // 4.5 Forex Tracker
+    setupForexTracker();
 
     // 5. Calculators
     setupCalculators();

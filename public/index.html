@@ -49,6 +49,10 @@
                     <i class="fa-solid fa-earth-americas"></i>
                     <span>Global Inflation</span>
                 </button>
+                <button class="nav-item" data-target="dashboard-forex">
+                    <i class="fa-solid fa-money-bill-transfer"></i>
+                    <span>Currencies</span>
+                </button>
             </nav>
             <div class="sidebar-footer">
                 <span class="status-indicator connected"></span> Engine Operational
@@ -704,6 +708,127 @@
                             <h3>Inflation & Lending Rate Trajectory</h3>
                         </div>
                         <div class="chart-wrapper-box"><canvas id="inflationHistoricalChart"></canvas></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="dashboard-forex" class="dashboard-viewport">
+                <div class="dashboard-header-block">
+                    <h1>Global Currencies & Forex</h1>
+                    <p class="subtitle">Monitor real-time exchange rates, major pairs, and macroeconomic currency movements.</p>
+                </div>
+
+                <div class="search-wrapper">
+                    <div class="search-bar-container">
+                        <i class="fa-solid fa-search search-icon"></i>
+                        <input type="text" id="forex-search-input" aria-label="Search Currency Pair" placeholder="Search pair (e.g., EUR/USD, GBP/JPY)..." autocomplete="off">
+                        <button id="forex-search-btn" class="primary-btn">Search Pair</button>
+                    </div>
+                </div>
+
+                <p class="crypto-landing-note">Select a major currency pair below or search for a specific exchange rate.</p>
+
+                <div class="crypto-brackets-container" id="forex-landing-view">
+                    <h3>Major Exchange Rates</h3>
+                    <div id="forex-brackets-grid" class="crypto-brackets-grid" role="list">
+                        <!-- Canadian Dollar -->
+                        <div class="crypto-bracket-card" role="button" tabindex="0">
+                            <div class="bracket-icon"><span style="font-size: 32px; color: #10b981;"><i class="fa-solid fa-dollar-sign"></i></span></div>
+                            <div class="bracket-name">Canadian Dollar</div>
+                            <div class="bracket-symbol">USD/CAD</div>
+                            <div class="bracket-price">--</div>
+                            <div class="bracket-change" style="color: var(--text-secondary-muted);">Price (Live)</div>
+                        </div>
+
+                        <!-- Euro -->
+                        <div class="crypto-bracket-card" role="button" tabindex="0">
+                            <div class="bracket-icon"><span style="font-size: 32px; color: #3b82f6;"><i class="fa-solid fa-euro-sign"></i></span></div>
+                            <div class="bracket-name">Euro</div>
+                            <div class="bracket-symbol">EUR/USD</div>
+                            <div class="bracket-price">--</div>
+                            <div class="bracket-change" style="color: var(--text-secondary-muted);">Price (Live)</div>
+                        </div>
+
+                        <!-- British Pound -->
+                        <div class="crypto-bracket-card" role="button" tabindex="0">
+                            <div class="bracket-icon"><span style="font-size: 32px; color: #8b5cf6;"><i class="fa-solid fa-sterling-sign"></i></span></div>
+                            <div class="bracket-name">British Pound</div>
+                            <div class="bracket-symbol">GBP/USD</div>
+                            <div class="bracket-price">--</div>
+                            <div class="bracket-change" style="color: var(--text-secondary-muted);">Price (Live)</div>
+                        </div>
+
+                        <!-- Japanese Yen -->
+                        <div class="crypto-bracket-card" role="button" tabindex="0">
+                            <div class="bracket-icon"><span style="font-size: 32px; color: #ef4444;"><i class="fa-solid fa-yen-sign"></i></span></div>
+                            <div class="bracket-name">Japanese Yen</div>
+                            <div class="bracket-symbol">USD/JPY</div>
+                            <div class="bracket-price">--</div>
+                            <div class="bracket-change" style="color: var(--text-secondary-muted);">Price (Live)</div>
+                        </div>
+
+                        <!-- Chinese Yuan -->
+                        <div class="crypto-bracket-card" role="button" tabindex="0">
+                            <div class="bracket-icon"><span style="font-size: 32px; color: #f59e0b;"><i class="fa-solid fa-yen-sign"></i></span></div>
+                            <div class="bracket-name">Chinese Yuan</div>
+                            <div class="bracket-symbol">USD/CNY</div>
+                            <div class="bracket-price">--</div>
+                            <div class="bracket-change" style="color: var(--text-secondary-muted);">Price (Live)</div>
+                        </div>
+
+                        <!-- Indian Rupee -->
+                        <div class="crypto-bracket-card" role="button" tabindex="0">
+                            <div class="bracket-icon"><span style="font-size: 32px; color: #ec4899;"><i class="fa-solid fa-rupee-sign"></i></span></div>
+                            <div class="bracket-name">Indian Rupee</div>
+                            <div class="bracket-symbol">USD/INR</div>
+                            <div class="bracket-price">--</div>
+                            <div class="bracket-change" style="color: var(--text-secondary-muted);">Price (Live)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="forex-loader" class="loader-container hidden-element">
+                    <div class="spinner"></div>
+                    <p id="forex-loader-text">Analyzing exchange rates...</p>
+                </div>
+
+                <div id="forex-results-container" class="hidden-element">
+                    <div class="equity-results-header">
+                        <button id="forex-back-btn" class="secondary-btn">← Back to Major Pairs</button>
+                    </div>
+                    <div class="ticker-hero-card">
+                        <div class="hero-meta">
+                            <div class="macro-hero-identity">
+                                <div class="ticker-logo-box" style="background: var(--surface-300);">
+                                    <i class="fa-solid fa-money-bill-transfer" style="color: var(--text-primary);"></i>
+                                </div>
+                                <div>
+                                    <h2 id="forex-name-display">Currency Name</h2>
+                                    <div class="ticker-badges">
+                                        <span id="forex-symbol-badge" class="badge">SYMBOL</span>
+                                        <span class="badge secondary">Forex</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="hero-pricing">
+                            <div id="forex-live-price" class="price-value">--</div>
+                            <div id="forex-change-display" class="price-change-percent">--</div>
+                        </div>
+                    </div>
+
+                    <div class="company-profile-card">
+                        <h3>Currency Profile & Macro Analysis</h3>
+                        <p id="forex-description-display" style="color: var(--text-secondary-muted); line-height: 1.6; margin-top: 12px;">
+                            --
+                        </p>
+                    </div>
+
+                    <div class="chart-container-card">
+                        <div class="chart-header">
+                            <h3>1-Year Exchange Rate History</h3>
+                        </div>
+                        <div class="chart-wrapper-box"><canvas id="forexHistoricalChart" width="100%" height="300"></canvas></div>
                     </div>
                 </div>
             </section>

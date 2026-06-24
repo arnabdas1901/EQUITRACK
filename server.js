@@ -23,12 +23,14 @@ const cryptoRoutes = require('./routes/crypto');
 const macroRoutes = require('./routes/macro');
 const aiRoutes = require('./routes/ai');
 const commoditiesRoutes = require('./routes/commodities');
+const forexRoutes = require('./routes/forex');
 
 // Mount Routes
 app.use('/api', equityRoutes); // contains /finnhub/* and /twelvedata/*
 app.use('/api/crypto', cryptoRoutes);
 app.use('/api', macroRoutes); // contains /indices
 app.use('/api/commodities', commoditiesRoutes);
+app.use('/api/forex', forexRoutes);
 app.use('/api/ai', aiRoutes);
 
 // Error Handling Middleware
