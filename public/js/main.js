@@ -53,12 +53,12 @@ function setupNavigation() {
             toggleBtn?.setAttribute('aria-expanded', 'false');
 
             // Save state so page reloads remember the current dashboard
-            localStorage.setItem('equitrack_active_dashboard', targetId);
+            sessionStorage.setItem('equitrack_active_dashboard', targetId);
         });
     });
 
     // Restore saved dashboard state on page load
-    const savedDashboard = localStorage.getItem('equitrack_active_dashboard');
+    const savedDashboard = sessionStorage.getItem('equitrack_active_dashboard');
     if (savedDashboard) {
         const savedNavItem = Array.from(navItems).find(n => n.getAttribute('data-target') === savedDashboard);
         if (savedNavItem) {

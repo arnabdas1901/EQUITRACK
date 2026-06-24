@@ -706,7 +706,7 @@
     <script>
         // Synchronous execution before first paint to prevent FOUC (flicker)
         (function() {
-            const saved = localStorage.getItem('equitrack_active_dashboard');
+            const saved = sessionStorage.getItem('equitrack_active_dashboard');
             if (saved && saved !== 'dashboard-equity') {
                 const eqNav = document.querySelector('[data-target="dashboard-equity"]');
                 const eqView = document.getElementById('dashboard-equity');
