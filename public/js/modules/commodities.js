@@ -1,7 +1,43 @@
-import { BACKEND_URL, fetchWithTimeout, safeJsonParse, formatLargeCurrency } from '../utils.js';
+import { BACKEND_URL, fetchWithTimeout, safeJsonParse, showToast } from '../utils.js';
 
 let commoditiesData = [];
 let commodityChartInstance = null;
+let activeCommodity = null;
+let activeTimeframe = '1Y';
+let activeSector = 'all';
+
+const SECTOR_DRIVERS = {
+    precious_metals: [
+        'Real yields & Fed policy expectations',
+        'USD strength / weakness cycles',
+        'Central bank reserve demand',
+        'Geopolitical risk & safe-haven flows',
+    ],
+    energy: [
+        'OPEC+ supply decisions & spare capacity',
+        'Global demand / industrial activity',
+        'Inventory levels & refinery utilization',
+        'Geopolitical supply disruptions',
+    ],
+    industrial: [
+        'China manufacturing & construction PMI',
+        'Global infrastructure & electrification demand',
+        'Mine supply & smelter capacity',
+        'Inventory cycles at LME/COMEX warehouses',
+    ],
+    agriculture: [
+        'Weather patterns & crop yield forecasts',
+        'Export demand & trade policy',
+        'Planting acreage & harvest reports (USDA)',
+        'Energy costs & fertilizer pricing',
+    ],
+    other: [
+        'Global supply & demand balance',
+        'USD denomination & inflation expectations',
+        'Trade flows & geopolitical risk',
+        'Inventory & storage dynamics',
+    ],
+};
 
 export function initCommoditiesDashboard() {
     setupUIListeners();
@@ -9,169 +45,404 @@ export function initCommoditiesDashboard() {
 }
 
 function setupUIListeners() {
-    const backBtn = document.getElementById('commodity-back-btn');
-    if (backBtn) {
-        backBtn.addEventListener('click', () => {
-            document.getElementById('commodity-results-container').classList.add('hidden-element');
-            document.getElementById('commodity-landing-view').classList.remove('hidden-element');
-        });
-    }
+    document.getElementById('commodity-back-btn')?.addEventListener('click', showLandingView);
 
     const searchBtn = document.getElementById('commodity-search-btn');
     const searchInput = document.getElementById('commodity-search-input');
     if (searchBtn && searchInput) {
         searchBtn.addEventListener('click', () => {
             const query = searchInput.value.trim();
-            if (!query) return;
+            if (!query) {
+                showToast('Enter a futures ticker or commodity name');
+                return;
+            }
             performCommoditySearch(query);
         });
         searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') searchBtn.click();
         });
     }
-}
 
-async function loadCommodityDashboard() {
-    const grid = document.getElementById('commodity-brackets-grid');
-    if (!grid) return;
+    document.querySelectorAll('#commodities-sector-filter .commodities-sector-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#commodities-sector-filter .commodities-sector-btn').forEach((b) => {
+                b.classList.remove('active');
+                b.setAttribute('aria-selected', 'false');
+            });
+            btn.classList.add('active');
+            btn.setAttribute('aria-selected', 'true');
+            activeSector = btn.getAttribute('data-sector') || 'all';
+            renderCommodityTable(commoditiesData);
+            renderQuickGrid(commoditiesData);
+        });
+    });
 
-    grid.innerHTML = '<div class="commodity-note" style="padding: 20px; grid-column: 1/-1;">Fetching live macro data...</div>';
-
-    try {
-        const response = await fetchWithTimeout(`${BACKEND_URL}/api/commodities`);
-        const payload = await safeJsonParse(response);
-        
-        if (payload?.commodities && Array.isArray(payload.commodities)) {
-            commoditiesData = payload.commodities;
-            renderCommodityGrid(commoditiesData);
-        } else {
-            grid.innerHTML = '<div class="commodity-note" style="padding: 20px; grid-column: 1/-1; color: var(--error-red);">Failed to load commodity data.</div>';
-        }
-    } catch (error) {
-        console.error('Failed to load commodities:', error);
-        grid.innerHTML = '<div class="commodity-note" style="padding: 20px; grid-column: 1/-1; color: var(--error-red);">Error connecting to macro service. Please try again.</div>';
-    }
-}
-
-function renderCommodityGrid(items) {
-    const grid = document.getElementById('commodity-brackets-grid');
-    if (!grid) return;
-
-    if (items.length === 0) {
-        grid.innerHTML = '<div class="commodity-note">No commodities tracked.</div>';
-        return;
-    }
-
-    grid.innerHTML = items.map(item => {
-        if (item.error) {
-            return `
-                <button class="crypto-bracket-card disabled" disabled>
-                    <div class="crypto-bracket-header">
-                        <span class="crypto-bracket-emoji">${item.emoji || '⚠️'}</span>
-                        <div>
-                            <div class="crypto-bracket-name">${item.name}</div>
-                            <div class="crypto-bracket-symbol">${item.symbol}</div>
-                        </div>
-                    </div>
-                    <div class="crypto-bracket-price" style="font-size: 0.9rem; margin-top: 10px;">Data Unavailable</div>
-                </button>
-            `;
-        }
-
-        const priceText = item.price != null ? formatLargeCurrency(item.price) : 'N/A';
-        const changeVal = item.changePercent != null ? parseFloat(item.changePercent) : 0;
-        const changeText = item.changePercent != null ? `${changeVal >= 0 ? '+' : ''}${changeVal.toFixed(2)}%` : '--%';
-        const changeClass = changeVal >= 0 ? 'pos-change' : 'neg-change';
-
-        return `
-            <button class="crypto-bracket-card" data-id="${item.id}">
-                <div class="crypto-bracket-header">
-                    <span class="crypto-bracket-emoji">${item.emoji}</span>
-                    <div>
-                        <div class="crypto-bracket-name">${item.name}</div>
-                        <div class="crypto-bracket-symbol">${item.symbol}</div>
-                    </div>
-                </div>
-                <div class="crypto-bracket-price">${priceText}</div>
-                <div class="crypto-bracket-change ${changeClass}">${changeText}</div>
-            </button>
-        `;
-    }).join('');
-
-    // Attach listeners
-    grid.querySelectorAll('.crypto-bracket-card:not(.disabled)').forEach(card => {
-        card.addEventListener('click', () => {
-            selectCommodity(card.getAttribute('data-id'));
+    document.querySelectorAll('#commodity-chart-timeframes .tf-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            document.querySelectorAll('#commodity-chart-timeframes .tf-btn').forEach((b) => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeTimeframe = btn.getAttribute('data-tf') || '1Y';
+            if (activeCommodity?.futuresTicker || activeCommodity?.symbol) {
+                await reloadChart(activeCommodity.futuresTicker || activeCommodity.symbol);
+            }
         });
     });
 }
 
-function selectCommodity(id) {
-    const item = commoditiesData.find(c => c.id === id);
-    if (!item) return;
-    // For grid items, we can use their symbol or name to search and get the graph
-    performCommoditySearch(item.name || item.symbol);
+function showLandingView() {
+    document.getElementById('commodity-results-container')?.classList.add('hidden-element');
+    document.getElementById('commodity-loader')?.classList.add('hidden-element');
+    document.getElementById('commodity-landing-view')?.classList.remove('hidden-element');
+    activeCommodity = null;
 }
 
-async function performCommoditySearch(query) {
-    document.getElementById('commodity-landing-view').classList.add('hidden-element');
-    document.getElementById('commodity-results-container').classList.remove('hidden-element');
+function showDetailView() {
+    document.getElementById('commodity-landing-view')?.classList.add('hidden-element');
+    document.getElementById('commodity-results-container')?.classList.remove('hidden-element');
+}
 
-    // Set loading states
-    document.getElementById('commodity-icon-display').innerText = '⏳';
-    document.getElementById('commodity-name-display').innerText = 'Searching...';
-    document.getElementById('commodity-ticker-badge').innerText = '...';
-    document.getElementById('commodity-live-price-display').innerText = 'N/A';
-    document.getElementById('commodity-live-change-display').innerText = '--%';
-    document.getElementById('commodity-live-change-display').className = 'price-change-percent';
-    
-    const descEl = document.getElementById('commodity-description-display');
-    descEl.innerHTML = '<span class="pulse-text" style="color: var(--neon-cyan-vibrant);">Analyzing global macro data, fetching historical charts, and writing market profile...</span>';
+async function loadCommodityDashboard() {
+    const tableBody = document.getElementById('commodity-table-body');
+    const feedStatus = document.getElementById('commodities-feed-status');
+    if (!tableBody) return;
 
-    if (commodityChartInstance) {
-        commodityChartInstance.destroy();
-        commodityChartInstance = null;
-    }
+    feedStatus && (feedStatus.textContent = 'Syncing market feed…');
 
     try {
-        const response = await fetchWithTimeout(`${BACKEND_URL}/api/commodities/search?query=${encodeURIComponent(query)}`);
+        const response = await fetchWithTimeout(`${BACKEND_URL}/api/commodities`, { timeout: 30000 });
         const payload = await safeJsonParse(response);
 
+        if (payload?.commodities && Array.isArray(payload.commodities)) {
+            commoditiesData = payload.commodities;
+            renderCommodityTable(commoditiesData);
+            renderQuickGrid(commoditiesData);
+            updateFeedStatus(payload);
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="8" class="commodities-empty-cell">Unable to load market data.</td></tr>';
+            feedStatus && (feedStatus.textContent = 'Feed unavailable');
+        }
+    } catch (error) {
+        console.error('Failed to load commodities:', error);
+        tableBody.innerHTML = '<tr><td colspan="8" class="commodities-empty-cell">Connection error. Retry shortly.</td></tr>';
+        feedStatus && (feedStatus.textContent = 'Feed disconnected');
+    }
+}
+
+function updateFeedStatus(payload) {
+    const feedStatus = document.getElementById('commodities-feed-status');
+    const syncLabel = document.getElementById('commodities-last-sync');
+    const available = payload.commodities.filter((c) => !c.error).length;
+    const total = payload.commodities.length;
+    const syncTime = payload.fetchedAt
+        ? new Date(payload.fetchedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        : '—';
+
+    feedStatus && (feedStatus.textContent = `Live · ${available}/${total} instruments`);
+    syncLabel && (syncLabel.textContent = `Last sync ${syncTime}`);
+}
+
+function filterBySector(items) {
+    if (activeSector === 'all') return items;
+    return items.filter((item) => item.sector === activeSector);
+}
+
+function formatCommodityPrice(value, unit) {
+    if (value == null || Number.isNaN(Number(value))) return '—';
+    const num = Number(value);
+    if (num >= 10000) return `$${num.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+    if (num >= 1000) return `$${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (num >= 100) return `$${num.toFixed(2)}`;
+    if (num >= 10) return `$${num.toFixed(2)}`;
+    return `$${num.toFixed(3)}`;
+}
+
+function formatChange(value) {
+    if (value == null || Number.isNaN(Number(value))) return '—';
+    const num = Number(value);
+    const sign = num >= 0 ? '+' : '';
+    return `${sign}${num.toFixed(2)}`;
+}
+
+function formatChangePercent(value) {
+    if (value == null || Number.isNaN(Number(value))) return '—';
+    const num = Number(value);
+    const sign = num >= 0 ? '+' : '';
+    return `${sign}${num.toFixed(2)}%`;
+}
+
+function formatTimestamp(iso) {
+    if (!iso) return '—';
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function renderCommodityTable(items) {
+    const tableBody = document.getElementById('commodity-table-body');
+    if (!tableBody) return;
+
+    const filtered = filterBySector(items);
+    if (filtered.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="8" class="commodities-empty-cell">No instruments in this sector.</td></tr>';
+        return;
+    }
+
+    tableBody.innerHTML = filtered.map((item) => {
+        if (item.error) {
+            return `
+                <tr class="commodities-row commodities-row-disabled">
+                    <td>
+                        <div class="commodities-instrument-cell">
+                            <span class="commodities-instrument-icon sector-${item.sector || 'other'}"><i class="fa-solid ${item.icon || 'fa-chart-line'}"></i></span>
+                            <div>
+                                <span class="commodities-instrument-name">${item.name}</span>
+                                <span class="commodities-instrument-symbol">${item.futuresTicker || item.symbol}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="commodities-sector-tag">${item.sectorLabel || '—'}</span></td>
+                    <td>${item.exchange || '—'}</td>
+                    <td class="num-col" colspan="4"><span class="commodities-unavailable">Unavailable</span></td>
+                    <td>—</td>
+                </tr>
+            `;
+        }
+
+        const changeVal = item.changePercent != null ? Number(item.changePercent) : 0;
+        const changeClass = changeVal >= 0 ? 'pos-change' : 'neg-change';
+        const staleBadge = item.stale ? '<span class="commodities-stale-badge">Stale</span>' : '';
+
+        return `
+            <tr class="commodities-row" data-id="${item.id}" tabindex="0" role="button" aria-label="Analyze ${item.name}">
+                <td>
+                    <div class="commodities-instrument-cell">
+                        <span class="commodities-instrument-icon sector-${item.sector || 'other'}"><i class="fa-solid ${item.icon || 'fa-chart-line'}"></i></span>
+                        <div>
+                            <span class="commodities-instrument-name">${item.name} ${staleBadge}</span>
+                            <span class="commodities-instrument-symbol">${item.futuresTicker || item.symbol}</span>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="commodities-sector-tag sector-tag-${item.sector}">${item.sectorLabel || '—'}</span></td>
+                <td>${item.exchange || '—'}</td>
+                <td class="num-col commodities-mono">${formatCommodityPrice(item.price, item.unit)}</td>
+                <td class="num-col commodities-mono ${changeClass}">${formatChange(item.change)}</td>
+                <td class="num-col commodities-mono ${changeClass}">${formatChangePercent(item.changePercent)}</td>
+                <td class="commodities-unit-cell">${item.unit || 'USD'}</td>
+                <td class="commodities-time-cell">${formatTimestamp(item.lastUpdated)}</td>
+            </tr>
+        `;
+    }).join('');
+
+    tableBody.querySelectorAll('.commodities-row:not(.commodities-row-disabled)').forEach((row) => {
+        const open = () => selectCommodity(row.getAttribute('data-id'));
+        row.addEventListener('click', open);
+        row.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                open();
+            }
+        });
+    });
+}
+
+function renderQuickGrid(items) {
+    const grid = document.getElementById('commodity-quick-grid');
+    if (!grid) return;
+
+    const filtered = filterBySector(items).filter((item) => !item.error);
+    if (filtered.length === 0) {
+        grid.innerHTML = '';
+        return;
+    }
+
+    grid.innerHTML = filtered.map((item) => {
+        const changeVal = item.changePercent != null ? Number(item.changePercent) : 0;
+        const changeClass = changeVal >= 0 ? 'pos-change' : 'neg-change';
+
+        return `
+            <button class="commodities-quick-card" data-id="${item.id}" type="button">
+                <div class="commodities-quick-top">
+                    <span class="commodities-instrument-icon sector-${item.sector || 'other'}"><i class="fa-solid ${item.icon || 'fa-chart-line'}"></i></span>
+                    <span class="commodities-sector-tag sector-tag-${item.sector}">${item.sectorLabel}</span>
+                </div>
+                <div class="commodities-quick-name">${item.name}</div>
+                <div class="commodities-quick-symbol">${item.futuresTicker || item.symbol}</div>
+                <div class="commodities-quick-price">${formatCommodityPrice(item.price, item.unit)}</div>
+                <div class="commodities-quick-change ${changeClass}">${formatChangePercent(item.changePercent)}</div>
+            </button>
+        `;
+    }).join('');
+
+    grid.querySelectorAll('.commodities-quick-card').forEach((card) => {
+        card.addEventListener('click', () => selectCommodity(card.getAttribute('data-id')));
+    });
+}
+
+function selectCommodity(id) {
+    const item = commoditiesData.find((c) => c.id === id);
+    if (!item || item.error) return;
+    activeCommodity = item;
+    activeTimeframe = '1Y';
+    document.querySelectorAll('#commodity-chart-timeframes .tf-btn').forEach((b) => {
+        b.classList.toggle('active', b.getAttribute('data-tf') === '1Y');
+    });
+    performCommoditySearch(item.name, item.futuresTicker);
+}
+
+async function performCommoditySearch(query, directSymbol = null) {
+    showDetailView();
+    document.getElementById('commodity-loader')?.classList.remove('hidden-element');
+    document.getElementById('commodity-results-container')?.classList.add('hidden-element');
+    setDetailLoadingState();
+
+    try {
+        const params = new URLSearchParams();
+        if (directSymbol) {
+            params.set('symbol', directSymbol);
+            params.set('query', query);
+        } else {
+            params.set('query', query);
+        }
+
+        const response = await fetchWithTimeout(`${BACKEND_URL}/api/commodities/search?${params}`, { timeout: 45000 });
+        const payload = await safeJsonParse(response);
+
+        document.getElementById('commodity-loader')?.classList.add('hidden-element');
+        document.getElementById('commodity-results-container')?.classList.remove('hidden-element');
+
         if (payload?.error) {
-            descEl.innerHTML = `<span style="color: var(--error-red);">${payload.error}</span>`;
-            document.getElementById('commodity-name-display').innerText = 'Search Failed';
+            showToast(payload.error);
+            populateDetailError(payload.error);
             return;
         }
 
         if (payload) {
-            // Populate Hero
-            document.getElementById('commodity-icon-display').innerText = '🌐'; // Generic icon for searched commodity
-            document.getElementById('commodity-name-display').innerText = payload.name;
-            document.getElementById('commodity-ticker-badge').innerText = payload.symbol;
-            
-            const priceText = payload.price != null ? formatLargeCurrency(payload.price) : 'N/A';
-            document.getElementById('commodity-live-price-display').innerText = priceText;
-            
-            const changeVal = payload.changePercent != null ? parseFloat(payload.changePercent) : 0;
-            const changeText = payload.changePercent != null ? `${changeVal >= 0 ? '+' : ''}${changeVal.toFixed(2)}%` : '--%';
-            const changeClass = changeVal >= 0 ? 'price-change-percent pos-change' : 'price-change-percent neg-change';
-            
-            const changeDisplay = document.getElementById('commodity-live-change-display');
-            changeDisplay.innerText = changeText;
-            changeDisplay.className = changeClass;
-
-            // Populate Description
-            descEl.innerText = payload.description || 'Description unavailable.';
-
-            // Render Chart
-            if (payload.chartData && payload.chartData.length > 0) {
-                renderCommodityChart(payload.chartData, payload.name, changeVal >= 0);
+            activeCommodity = { ...activeCommodity, ...payload };
+            populateDetailView(payload);
+            if (payload.chartData?.length) {
+                renderCommodityChart(payload.chartData, payload.name, Number(payload.changePercent) >= 0);
+                updateAnalytics(payload.chartData, payload.price, payload.unit);
             }
         }
     } catch (error) {
         console.error('Failed to perform commodity search:', error);
-        descEl.innerHTML = '<span style="color: var(--error-red);">Failed to load commodity data due to a network error.</span>';
-        document.getElementById('commodity-name-display').innerText = 'Error';
+        document.getElementById('commodity-loader')?.classList.add('hidden-element');
+        document.getElementById('commodity-results-container')?.classList.remove('hidden-element');
+        populateDetailError('Network error loading commodity data.');
+        showToast('Failed to load commodity analysis');
+    }
+}
+
+async function reloadChart(symbol) {
+    const subtitle = document.getElementById('commodity-chart-subtitle');
+    subtitle && (subtitle.textContent = `Loading ${activeTimeframe} series…`);
+
+    try {
+        const response = await fetchWithTimeout(
+            `${BACKEND_URL}/api/commodities/chart?symbol=${encodeURIComponent(symbol)}&range=${activeTimeframe}`,
+            { timeout: 15000 }
+        );
+        const payload = await safeJsonParse(response);
+        if (payload?.chartData?.length) {
+            activeCommodity = { ...activeCommodity, ...payload };
+            renderCommodityChart(payload.chartData, activeCommodity.name, Number(payload.changePercent) >= 0);
+            updateAnalytics(payload.chartData, payload.price, activeCommodity.unit);
+            subtitle && (subtitle.textContent = `${activeTimeframe} futures continuous contract · ${payload.exchange || activeCommodity.exchange || 'Global'}`);
+        }
+    } catch (error) {
+        console.warn('Chart reload failed:', error);
+        subtitle && (subtitle.textContent = 'Chart update failed');
+    }
+}
+
+function setDetailLoadingState() {
+    document.getElementById('commodity-name-display').textContent = 'Loading…';
+    document.getElementById('commodity-ticker-badge').textContent = '…';
+    document.getElementById('commodity-live-price-display').textContent = '—';
+    document.getElementById('commodity-live-change-display').textContent = '—';
+    document.getElementById('commodity-live-change-display').className = 'price-change-percent';
+    document.getElementById('commodity-description-display').textContent = 'Generating macro profile…';
+    document.getElementById('commodity-provider-label').textContent = 'Source: loading…';
+}
+
+function populateDetailError(message) {
+    document.getElementById('commodity-name-display').textContent = 'Analysis Unavailable';
+    document.getElementById('commodity-description-display').textContent = message;
+}
+
+function populateDetailView(payload) {
+    const iconEl = document.querySelector('#commodity-icon-display i');
+    if (iconEl) {
+        iconEl.className = `fa-solid ${payload.icon || 'fa-chart-line'}`;
+    }
+    document.getElementById('commodity-sector-badge').textContent = payload.sectorLabel || 'Commodities';
+    document.getElementById('commodity-sector-badge').className = `commodities-sector-badge sector-tag-${payload.sector || 'other'}`;
+    document.getElementById('commodity-exchange-badge').textContent = payload.exchange || 'Global';
+    document.getElementById('commodity-name-display').textContent = payload.name;
+    document.getElementById('commodity-ticker-badge').textContent = payload.futuresTicker || payload.symbol;
+    document.getElementById('commodity-unit-badge').textContent = payload.unit || 'USD';
+
+    document.getElementById('commodity-live-price-display').textContent = formatCommodityPrice(payload.price, payload.unit);
+
+    const changeVal = payload.changePercent != null ? Number(payload.changePercent) : 0;
+    const changeEl = document.getElementById('commodity-live-change-display');
+    changeEl.textContent = `${formatChange(payload.change)} (${formatChangePercent(payload.changePercent)})`;
+    changeEl.className = `price-change-percent ${changeVal >= 0 ? 'pos-change' : 'neg-change'}`;
+
+    document.getElementById('commodity-provider-label').textContent = `Source: ${payload.provider || 'Yahoo Finance'}`;
+    document.getElementById('commodity-description-display').textContent = payload.description || 'Profile unavailable.';
+    document.getElementById('commodity-chart-subtitle').textContent = `${activeTimeframe} futures continuous contract · ${payload.exchange || 'Global'}`;
+
+    renderDrivers(payload.sector);
+}
+
+function renderDrivers(sector) {
+    const list = document.getElementById('commodity-drivers-list');
+    if (!list) return;
+    const drivers = SECTOR_DRIVERS[sector] || SECTOR_DRIVERS.other;
+    list.innerHTML = drivers.map((driver) => `<li><i class="fa-solid fa-chevron-right"></i>${driver}</li>`).join('');
+}
+
+function computeAnalytics(chartData, currentPrice) {
+    const closes = chartData.map((d) => d.close).filter((v) => Number.isFinite(v));
+    if (closes.length === 0) return null;
+
+    const high = Math.max(...closes);
+    const low = Math.min(...closes);
+    const price = Number.isFinite(currentPrice) ? currentPrice : closes[closes.length - 1];
+    const rangePct = high > low ? ((price - low) / (high - low)) * 100 : 50;
+
+    const returns = [];
+    for (let i = 1; i < closes.length; i++) {
+        if (closes[i - 1] !== 0) {
+            returns.push((closes[i] - closes[i - 1]) / closes[i - 1]);
+        }
+    }
+    const mean = returns.reduce((a, b) => a + b, 0) / (returns.length || 1);
+    const variance = returns.reduce((sum, r) => sum + (r - mean) ** 2, 0) / (returns.length || 1);
+    const dailyVol = Math.sqrt(variance);
+    const annVol = dailyVol * Math.sqrt(252) * 100;
+
+    return { high, low, price, rangePct, annVol };
+}
+
+function updateAnalytics(chartData, currentPrice, unit) {
+    const stats = computeAnalytics(chartData, currentPrice);
+    if (!stats) return;
+
+    document.getElementById('commodity-metric-52h').textContent = formatCommodityPrice(stats.high, unit);
+    document.getElementById('commodity-metric-52l').textContent = formatCommodityPrice(stats.low, unit);
+    document.getElementById('commodity-metric-range-pct').textContent = `${stats.rangePct.toFixed(1)}%`;
+    document.getElementById('commodity-metric-volatility').textContent = `${stats.annVol.toFixed(1)}%`;
+
+    document.getElementById('commodity-range-low').textContent = formatCommodityPrice(stats.low, unit);
+    document.getElementById('commodity-range-high').textContent = formatCommodityPrice(stats.high, unit);
+    document.getElementById('commodity-range-label').textContent = `${stats.rangePct.toFixed(0)}% of range`;
+
+    const marker = document.getElementById('commodity-range-marker');
+    if (marker) {
+        marker.style.left = `${Math.min(Math.max(stats.rangePct, 2), 98)}%`;
     }
 }
 
@@ -183,25 +454,25 @@ function renderCommodityChart(chartData, name, isPositive) {
         commodityChartInstance.destroy();
     }
 
-    const labels = chartData.map(d => {
+    const labels = chartData.map((d) => {
         const date = new Date(d.time * 1000);
-        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     });
-    const dataPoints = chartData.map(d => d.close);
+    const dataPoints = chartData.map((d) => d.close);
 
-    const lineColor = isPositive ? '#00e6b8' : '#ff4d4d'; // neon cyan or neon red
-    const gradientColorStart = isPositive ? 'rgba(0, 230, 184, 0.2)' : 'rgba(255, 77, 77, 0.2)';
-    const gradientColorEnd = isPositive ? 'rgba(0, 230, 184, 0)' : 'rgba(255, 77, 77, 0)';
+    const lineColor = isPositive ? '#10b981' : '#ef4444';
+    const gradientStart = isPositive ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)';
+    const gradientEnd = isPositive ? 'rgba(16, 185, 129, 0)' : 'rgba(239, 68, 68, 0)';
 
     const chartCtx = ctx.getContext('2d');
-    const gradient = chartCtx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, gradientColorStart);
-    gradient.addColorStop(1, gradientColorEnd);
+    const gradient = chartCtx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, gradientStart);
+    gradient.addColorStop(1, gradientEnd);
 
     commodityChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: labels,
+            labels,
             datasets: [{
                 label: `${name} Price`,
                 data: dataPoints,
@@ -209,52 +480,47 @@ function renderCommodityChart(chartData, name, isPositive) {
                 backgroundColor: gradient,
                 borderWidth: 2,
                 pointRadius: 0,
-                pointHoverRadius: 6,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: lineColor,
                 fill: true,
-                tension: 0.1
-            }]
+                tension: 0.15,
+            }],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index',
-            },
+            interaction: { intersect: false, mode: 'index' },
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: '#1a1f2e',
-                    titleColor: '#8f9bb3',
-                    bodyColor: '#ffffff',
-                    borderColor: '#2e3852',
+                    backgroundColor: '#0d1326',
+                    titleColor: '#94a3b8',
+                    bodyColor: '#f8fafc',
+                    borderColor: '#1e2d54',
                     borderWidth: 1,
+                    padding: 12,
+                    displayColors: false,
                     callbacks: {
-                        label: function(context) {
-                            return formatLargeCurrency(context.parsed.y);
-                        }
-                    }
-                }
+                        title: (items) => items[0]?.label || '',
+                        label: (context) => formatCommodityPrice(context.parsed.y),
+                    },
+                },
             },
             scales: {
                 x: {
-                    display: false,
+                    grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                    ticks: { color: '#64748b', maxTicksLimit: 8, font: { size: 11 } },
                 },
                 y: {
-                    display: true,
                     position: 'right',
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.05)',
-                        drawBorder: false,
-                    },
+                    grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
                     ticks: {
-                        color: '#8f9bb3',
-                        callback: function(value) {
-                            return '$' + value;
-                        }
-                    }
-                }
-            }
-        }
+                        color: '#64748b',
+                        font: { family: 'JetBrains Mono, monospace', size: 11 },
+                        callback: (value) => formatCommodityPrice(value),
+                    },
+                },
+            },
+        },
     });
 }
