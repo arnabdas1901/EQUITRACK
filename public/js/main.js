@@ -6,6 +6,7 @@ import { setupCalculators } from './modules/calculators.js';
 import { setupPortfolioBuilder } from './modules/portfolio.js';
 import { initCommoditiesDashboard } from './modules/commodities.js';
 import { setupForexTracker } from './modules/forex.js';
+import { setupStressTester } from './modules/stress.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Core UI Navigation
@@ -35,6 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 6. Portfolio
     setupPortfolioBuilder();
+
+    // 7. Stress Tester
+    setupStressTester();
 });
 
 function setupNavigation() {

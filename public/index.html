@@ -53,6 +53,10 @@
                     <i class="fa-solid fa-money-bill-transfer"></i>
                     <span>Currencies</span>
                 </button>
+                <button class="nav-item" data-target="dashboard-stress">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>Stress Tester</span>
+                </button>
             </nav>
             <div class="sidebar-footer">
                 <span class="status-indicator connected"></span> Engine Operational
@@ -818,9 +822,12 @@
                     </div>
 
                     <div class="company-profile-card">
-                        <h3>Currency Profile & Macro Analysis</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin: 0;">Currency Profile & Macro Analysis</h3>
+                            <button id="forex-ai-generate-btn" class="secondary-btn" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fa-solid fa-robot"></i> Generate Profile</button>
+                        </div>
                         <p id="forex-description-display" style="color: var(--text-secondary-muted); line-height: 1.6; margin-top: 12px;">
-                            --
+                            Click "Generate Profile" to run on-demand AI macroeconomic analysis.
                         </p>
                     </div>
 
@@ -832,6 +839,124 @@
                     </div>
                 </div>
             </section>
+
+            <section id="dashboard-stress" class="dashboard-viewport">
+                <div class="dashboard-header-block">
+                    <h1>Portfolio Stress Testing & Risk Engine</h1>
+                    <p class="subtitle">Monte Carlo simulation, historical scenario replay, and correlation-aware risk analytics with Cholesky decomposition</p>
+                </div>
+
+                <div class="stress-input-grid">
+                    <div class="stress-inputs-card">
+                        <h3><i class="fa-solid fa-sliders"></i> Portfolio Configuration</h3>
+                        <div class="input-field-group">
+                            <label for="stress-capital-input">Initial Capital ($)</label>
+                            <input type="number" id="stress-capital-input" value="100000" min="1000" step="1000" placeholder="e.g., 100000">
+                        </div>
+                        <div class="input-field-group">
+                            <label for="stress-age-input">Investor Age (Years)</label>
+                            <input type="number" id="stress-age-input" value="30" min="1" max="120" placeholder="e.g., 30">
+                        </div>
+                        <div class="input-field-group">
+                            <label for="stress-risk-input">Risk Profile</label>
+                            <select id="stress-risk-input">
+                                <option value="conservative">Conservative (Capital Preservation)</option>
+                                <option value="moderate" selected>Moderate (Balanced Growth)</option>
+                                <option value="aggressive">Aggressive (High Alpha)</option>
+                            </select>
+                        </div>
+                        <button id="stress-import-btn" class="secondary-btn fluid-btn" style="margin-top: 8px;">
+                            <i class="fa-solid fa-download"></i> Import from Portfolio Builder
+                        </button>
+                    </div>
+
+                    <div class="stress-inputs-card">
+                        <h3><i class="fa-solid fa-flask-vial"></i> Simulation Parameters</h3>
+                        <div class="input-field-group">
+                            <label for="stress-scenario-select">Stress Scenario</label>
+                            <select id="stress-scenario-select">
+                                <optgroup label="Historical Events">
+                                    <option value="gfc2008" selected>📉 2008 Global Financial Crisis</option>
+                                    <option value="covid2020">🦠 2020 COVID-19 Crash</option>
+                                    <option value="dotcom2000">💥 2000 Dot-Com Bubble Burst</option>
+                                    <option value="rateShock2022">🏦 2022 Rate Hike Shock</option>
+                                </optgroup>
+                                <optgroup label="Custom">
+                                    <option value="custom">⚙️ Custom Shock (Define Below)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div id="custom-shock-inputs" class="hidden-element">
+                            <!-- Generated dynamically by stress.js -->
+                        </div>
+                        <div class="input-field-group">
+                            <label for="stress-mc-years">Monte Carlo Horizon (Years)</label>
+                            <input type="number" id="stress-mc-years" value="5" min="1" max="30" step="1">
+                        </div>
+                        <div class="input-field-group">
+                            <label for="stress-mc-paths">Simulation Paths</label>
+                            <select id="stress-mc-paths">
+                                <option value="500">500 paths (Fast)</option>
+                                <option value="1000" selected>1,000 paths (Balanced)</option>
+                                <option value="3000">3,000 paths (Precise)</option>
+                            </select>
+                        </div>
+                        <button id="stress-run-btn" class="primary-btn fluid-btn" style="margin-top: 8px;">
+                            <i class="fa-solid fa-bolt"></i> Execute Stress Test
+                        </button>
+                    </div>
+                </div>
+
+                <div id="stress-loader" class="loader-container hidden-element">
+                    <div class="spinner"></div>
+                    <p>Running Monte Carlo simulation & stress scenarios...</p>
+                </div>
+
+                <div id="stress-results-container" class="hidden-element">
+
+                    <div class="stress-section-card">
+                        <h3><i class="fa-solid fa-layer-group"></i> Active Allocation Profile</h3>
+                        <div id="stress-allocation-chips" class="stress-chips-row"></div>
+                    </div>
+
+                    <div class="stress-section-card">
+                        <h3><i class="fa-solid fa-clock-rotate-left"></i> Historical Scenario Impact</h3>
+                        <p class="section-desc" id="stress-scenario-desc">Simulating portfolio performance under the selected crisis event.</p>
+                        <div class="stress-scenario-grid">
+                            <div class="chart-wrapper-box" style="height: 340px;">
+                                <canvas id="stressDrawdownChart"></canvas>
+                            </div>
+                            <div id="stress-scenario-metrics" class="stress-metrics-side">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stress-section-card">
+                        <h3><i class="fa-solid fa-dice"></i> Monte Carlo Probability Distribution</h3>
+                        <p class="section-desc">Simulated portfolio trajectories with correlated asset returns using Cholesky decomposition.</p>
+                        <div class="chart-wrapper-box" style="height: 400px;">
+                            <canvas id="stressMonteCarloChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="stress-section-card">
+                        <h3><i class="fa-solid fa-gauge-high"></i> Quantitative Risk Metrics</h3>
+                        <div id="stress-risk-metrics" class="metric-summary-grid">
+                        </div>
+                    </div>
+
+                    <div class="stress-section-card">
+                        <h3><i class="fa-solid fa-robot"></i> AI Risk Assessment</h3>
+                        <div id="stress-ai-commentary" class="stress-ai-output">
+                            <span class="terminal-prompt">Risk assessment will appear after running a stress test.</span>
+                        </div>
+                    </div>
+
+                    <p class="projection-disclaimer"><i class="fa-solid fa-circle-info"></i> <strong>Disclaimer:</strong> Stress tests use historical drawdown data and Monte Carlo simulations based on trailing volatility estimates. Past performance does not guarantee future results. This is for educational purposes only—not investment advice.</p>
+
+                </div>
+            </section>
+
         </main>
     </div>
 

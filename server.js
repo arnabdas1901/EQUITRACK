@@ -24,6 +24,7 @@ const macroRoutes = require('./routes/macro');
 const aiRoutes = require('./routes/ai');
 const commoditiesRoutes = require('./routes/commodities');
 const forexRoutes = require('./routes/forex');
+const stressRoutes = require('./routes/stress');
 
 // Mount Routes
 app.use('/api', equityRoutes); // contains /finnhub/* and /twelvedata/*
@@ -32,6 +33,7 @@ app.use('/api', macroRoutes); // contains /indices
 app.use('/api/commodities', commoditiesRoutes);
 app.use('/api/forex', forexRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/stress', stressRoutes);
 
 // Error Handling Middleware
 app.use((error, req, res, next) => {

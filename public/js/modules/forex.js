@@ -49,6 +49,11 @@ export async function setupForexTracker() {
         });
     });
 
+    const aiGenBtn = document.getElementById('forex-ai-generate-btn');
+    if (aiGenBtn) {
+        aiGenBtn.addEventListener('click', generateAiForexProfile);
+    }
+
     loadLatestForexRates();
 }
 
@@ -111,7 +116,19 @@ async function executeForexSearch(pairQuery) {
         changeEl.innerText = `${sign}${data.change.toFixed(4)} (${sign}${data.changePercent.toFixed(2)}%)`;
         changeEl.className = `price-change-percent ${colorClass}`;
 
-        document.getElementById('forex-description-display').innerText = data.description || 'No analysis available.';
+        document.getElementById('forex-description-display').innerText = 'Click "Generate Profile" to run on-demand AI macroeconomic analysis.';
+        
+        const btn = document.getElementById('forex-ai-generate-btn');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-robot"></i> Generate Profile';
+        }
+
+        window.currentForexPair = {
+            fromSymbol: data.fromSymbol,
+            toSymbol: data.toSymbol,
+            price: data.price
+        };
 
         if (data.chartData && data.chartData.length > 0) {
             renderForexChart(data.chartData, `${data.fromSymbol}/${data.toSymbol}`, isPositive);
@@ -207,4 +224,37 @@ function renderForexChart(chartData, pairName, isPositive) {
             }
         }
     });
+}
+
+async function generateAiForexProfile() {
+    if (!window.currentForexPair) return;
+    
+    const btn = document.getElementById('forex-ai-generate-btn');
+    const display = document.getElementById('forex-description-display');
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
+    }
+    display.innerText = 'Consulting AI Strategist...';
+
+    try {
+        const res = await fetch(`${BACKEND_URL}/api/forex/analyze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(window.currentForexPair)
+        });
+        const data = await safeJsonParse(res);
+        
+        if (data.error) throw new Error(data.error);
+        
+        display.innerText = data.analysis || 'Analysis unavailable.';
+    } catch (err) {
+        console.error('Forex AI Gen Error:', err);
+        display.innerText = 'Failed to generate profile.';
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-robot"></i> Retry Profile';
+        }
+    }
 }
