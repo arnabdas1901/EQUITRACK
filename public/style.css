@@ -1196,6 +1196,52 @@ select {
     padding-top: 12px;
 }
 
+/* Portfolio ↔ Stress Tester Cross-Navigation Card */
+.portfolio-stress-link-card {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(6, 182, 212, 0.08) 100%);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-top: 16px;
+}
+
+.portfolio-stress-link-card h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text-primary-white);
+}
+
+.portfolio-stress-link-card h3 i {
+    color: #f59e0b;
+    margin-right: 6px;
+}
+
+.stress-link-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.stress-link-content .section-desc {
+    margin-bottom: 0;
+}
+
+.stress-link-content .primary-btn {
+    white-space: nowrap;
+    padding: 12px 28px;
+    background: linear-gradient(135deg, #2563eb, #06b6d4);
+    border: none;
+    font-weight: 600;
+}
+
+.stress-link-content .primary-btn:hover {
+    background: linear-gradient(135deg, #1d4ed8, #0891b2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(6, 182, 212, 0.3);
+}
+
 
 .portfolio-suballocation-card h3, .portfolio-projection-card h3 {
     font-size: 1.1rem;

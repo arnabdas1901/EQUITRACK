@@ -13,9 +13,9 @@ export function loadDashboard() {
 }
 
 function setupSearch() {
-    const searchBtn = document.querySelector('#equity-search-btn');
-    const searchInput = document.querySelector('#equity-search-input');
-    const backBtn = document.querySelector('#equity-back-btn');
+    const searchBtn = document.getElementById('equity-search-btn');
+    const searchInput = document.getElementById('equity-search-input');
+    const backBtn = document.getElementById('equity-back-btn');
 
     const handleSearch = () => {
         if (!searchInput) return;
@@ -28,11 +28,14 @@ function setupSearch() {
     };
 
     if (searchBtn) {
-        searchBtn.addEventListener('click', handleSearch);
+        searchBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleSearch();
+        });
     }
 
     if (searchInput) {
-        searchInput.addEventListener('keypress', (e) => {
+        searchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 handleSearch();
@@ -48,11 +51,14 @@ function setupSearch() {
 function clearEquityResults() {
     const resultsContainer = document.getElementById('equity-results-container');
     const searchInput = document.getElementById('equity-search-input');
-    const watchlist = document.querySelector('.commodities-widget');
+    const newsWidget = document.querySelector('#dashboard-equity .news-widget');
+    const indexStrip = document.querySelector('#dashboard-equity .index-summary-strip');
     
     if (resultsContainer) resultsContainer.classList.add('hidden-element');
     if (searchInput) searchInput.value = '';
-    if (watchlist) watchlist.classList.remove('hidden-element');
+    if (newsWidget) newsWidget.classList.remove('hidden-element');
+    if (indexStrip) indexStrip.classList.remove('hidden-element');
+    activeEquityTicker = null;
 }
 
 function setupTimeframeSelectors() {
@@ -71,22 +77,33 @@ function setupTimeframeSelectors() {
 async function executeEquityAnalysis(ticker) {
     activeEquityTicker = ticker;
     
+    const searchBtn = document.getElementById('equity-search-btn');
+    const newsWidget = document.querySelector('#dashboard-equity .news-widget');
+    const indexStrip = document.querySelector('#dashboard-equity .index-summary-strip');
     const loader = document.getElementById('equity-loader');
     const resultsContainer = document.getElementById('equity-results-container');
-    const watchlist = document.querySelector('.commodities-widget');
-    
+
+    // Disable button and show loading state
+    const originalBtnText = searchBtn ? searchBtn.textContent : '';
+    if (searchBtn) {
+        searchBtn.disabled = true;
+        searchBtn.textContent = 'Analyzing...';
+    }
+
+    // Hide the news and index area, show the loader
+    if (newsWidget) newsWidget.classList.add('hidden-element');
+    if (indexStrip) indexStrip.classList.add('hidden-element');
     if (loader) loader.classList.remove('hidden-element');
     if (resultsContainer) resultsContainer.classList.add('hidden-element');
-    if (watchlist) watchlist.classList.add('hidden-element');
 
     try {
         const [profileRes, quoteRes, metricsRes, chartRes, bsRes, cfRes] = await Promise.all([
-            fetchWithTimeout(`${BACKEND_URL}/api/finnhub/profile?symbol=${ticker}`).catch(() => null),
-            fetchWithTimeout(`${BACKEND_URL}/api/finnhub/quote?symbol=${ticker}`).catch(() => null),
-            fetchWithTimeout(`${BACKEND_URL}/api/finnhub/metrics?symbol=${ticker}`).catch(() => null),
-            fetchWithTimeout(`${BACKEND_URL}/api/twelvedata/time_series?symbol=${ticker}&timeframe=1Y`).catch(() => null),
-            fetchWithTimeout(`${BACKEND_URL}/api/twelvedata/statements?symbol=${ticker}&type=balance_sheet`).catch(() => null),
-            fetchWithTimeout(`${BACKEND_URL}/api/twelvedata/statements?symbol=${ticker}&type=cash_flow`).catch(() => null)
+            fetchWithTimeout(`${BACKEND_URL}/api/finnhub/profile?symbol=${encodeURIComponent(ticker)}`).catch(() => null),
+            fetchWithTimeout(`${BACKEND_URL}/api/finnhub/quote?symbol=${encodeURIComponent(ticker)}`).catch(() => null),
+            fetchWithTimeout(`${BACKEND_URL}/api/finnhub/metrics?symbol=${encodeURIComponent(ticker)}`).catch(() => null),
+            fetchWithTimeout(`${BACKEND_URL}/api/twelvedata/time_series?symbol=${encodeURIComponent(ticker)}&timeframe=1Y`).catch(() => null),
+            fetchWithTimeout(`${BACKEND_URL}/api/twelvedata/statements?symbol=${encodeURIComponent(ticker)}&type=balance_sheet`).catch(() => null),
+            fetchWithTimeout(`${BACKEND_URL}/api/twelvedata/statements?symbol=${encodeURIComponent(ticker)}&type=cash_flow`).catch(() => null)
         ]);
 
         const profile = await safeJsonParse(profileRes);
@@ -114,10 +131,19 @@ async function executeEquityAnalysis(ticker) {
     } catch (error) {
         console.error("Market Data Fetch Error:", error);
         showToast(error.message || "Failed to load market data");
+        // On error, restore the news and index area so user can try again
+        if (newsWidget) newsWidget.classList.remove('hidden-element');
+        if (indexStrip) indexStrip.classList.remove('hidden-element');
     } finally {
         if (loader) loader.classList.add('hidden-element');
+        // Restore button state
+        if (searchBtn) {
+            searchBtn.disabled = false;
+            searchBtn.textContent = originalBtnText;
+        }
     }
 }
+
 
 async function loadEquityTimeSeries(symbol, timeframe = '1Y') {
     try {

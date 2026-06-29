@@ -860,10 +860,12 @@ async function executeStressTest() {
 export function setupStressTester() {
     const runBtn = document.getElementById('stress-run-btn');
     const importBtn = document.getElementById('stress-import-btn');
+    const backBtn = document.getElementById('stress-to-portfolio-btn');
     const scenarioSelect = document.getElementById('stress-scenario-select');
 
     if (runBtn) runBtn.addEventListener('click', executeStressTest);
     if (importBtn) importBtn.addEventListener('click', importFromPortfolio);
+    if (backBtn) backBtn.addEventListener('click', navigateToPortfolio);
 
     if (scenarioSelect) {
         scenarioSelect.addEventListener('change', () => {
@@ -878,4 +880,24 @@ export function setupStressTester() {
 
     // Generate custom shock slider inputs
     generateCustomShockInputs();
+}
+
+function navigateToPortfolio() {
+    // 1. Read current stress tester parameters
+    const capital = document.getElementById('stress-capital-input')?.value;
+    const age = document.getElementById('stress-age-input')?.value;
+    const risk = document.getElementById('stress-risk-input')?.value;
+
+    // 2. Sync them into the Portfolio Builder inputs
+    const portfolioCapital = document.getElementById('portfolio-capital-input');
+    const portfolioAge = document.getElementById('portfolio-age-input');
+    const portfolioRisk = document.getElementById('portfolio-risk-input');
+
+    if (portfolioCapital && capital) portfolioCapital.value = capital;
+    if (portfolioAge && age) portfolioAge.value = age;
+    if (portfolioRisk && risk) portfolioRisk.value = risk;
+
+    // 3. Navigate to the Portfolio Builder dashboard
+    const portfolioNav = document.querySelector('[data-target="dashboard-portfolio"]');
+    if (portfolioNav) portfolioNav.click();
 }

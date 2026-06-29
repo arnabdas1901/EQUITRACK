@@ -12,14 +12,39 @@ const ASSET_CLASSES = {
 
 export function setupPortfolioBuilder() {
     const generateBtn = document.getElementById('generate-portfolio-btn');
-    const riskInput = document.getElementById('portfolio-risk-input');
-    const ageInput = document.getElementById('portfolio-age-input');
-    const capitalInput = document.getElementById('portfolio-capital-input');
+    const stressBtn = document.getElementById('portfolio-to-stress-btn');
 
     if (generateBtn) generateBtn.addEventListener('click', generatePortfolio);
+    if (stressBtn) stressBtn.addEventListener('click', navigateToStressTest);
 
     // Generate initial
     generatePortfolio();
+}
+
+function navigateToStressTest() {
+    // 1. Read current portfolio parameters
+    const capital = document.getElementById('portfolio-capital-input')?.value;
+    const age = document.getElementById('portfolio-age-input')?.value;
+    const risk = document.getElementById('portfolio-risk-input')?.value;
+
+    // 2. Sync them into the Stress Tester inputs
+    const stressCapital = document.getElementById('stress-capital-input');
+    const stressAge = document.getElementById('stress-age-input');
+    const stressRisk = document.getElementById('stress-risk-input');
+
+    if (stressCapital && capital) stressCapital.value = capital;
+    if (stressAge && age) stressAge.value = age;
+    if (stressRisk && risk) stressRisk.value = risk;
+
+    // 3. Navigate to the Stress Tester dashboard
+    const stressNav = document.querySelector('[data-target="dashboard-stress"]');
+    if (stressNav) stressNav.click();
+
+    // 4. Auto-run the stress test after a brief delay for the dashboard to render
+    setTimeout(() => {
+        const runBtn = document.getElementById('stress-run-btn');
+        if (runBtn) runBtn.click();
+    }, 150);
 }
 
 function generatePortfolio() {

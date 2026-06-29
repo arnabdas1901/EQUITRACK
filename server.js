@@ -15,6 +15,17 @@ app.use(cors({
     origin: '*', // Allow all origins for Vercel/Render preview environments
 }));
 app.use(express.json());
+
+// Prevent browser caching of JS/CSS so changes are always reflected
+app.use((req, res, next) => {
+    if (req.path.endsWith('.js') || req.path.endsWith('.css')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+    }
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Import Routes
