@@ -33,6 +33,11 @@ export function setupAiAdvisor() {
             if (e.key === 'Enter') executeAiAnalysis();
         });
     }
+    
+    const pdfBtn = document.getElementById('ai-pdf-btn');
+    if (pdfBtn) {
+        pdfBtn.addEventListener('click', exportAiPdf);
+    }
 }
 
 async function executeAiAnalysis() {
@@ -53,6 +58,9 @@ async function executeAiAnalysis() {
 
     isAiRunning = true;
     if (btn) btn.disabled = true;
+    
+    const pdfBtn = document.getElementById('ai-pdf-btn');
+    if (pdfBtn) pdfBtn.style.display = 'none';
 
     const frameLabel = frameSelect?.selectedOptions?.[0]?.textContent || frame;
     if (output) {
@@ -83,6 +91,9 @@ async function executeAiAnalysis() {
                 <span class="terminal-prompt terminal-warn">&gt; Educational use only. Not financial advice.</span>
             `;
         }
+        
+        if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+        
         showToast(`AI analysis ready for ${ticker}.`);
     } catch (error) {
         console.error(error);
@@ -97,5 +108,34 @@ async function executeAiAnalysis() {
     } finally {
         isAiRunning = false;
         if (btn) btn.disabled = false;
+    }
+}
+
+async function exportAiPdf() {
+    if (!window.html2pdf) {
+        import('../utils.js').then(({ showToast }) => showToast('PDF library is still loading...'));
+        return;
+    }
+    const element = document.getElementById('dashboard-ai');
+    const tickerInput = document.getElementById('ai-ticker-input');
+    const ticker = tickerInput?.value.trim().toUpperCase() || 'Report';
+    const opt = {
+        margin:       10,
+        filename:     `STRATA_AI_Analysis_${ticker}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    
+    const btn = document.getElementById('ai-pdf-btn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating PDF...';
+    
+    try {
+        await window.html2pdf().set(opt).from(element).save();
+    } catch (err) {
+        console.error("PDF generation failed:", err);
+    } finally {
+        btn.innerHTML = originalText;
     }
 }

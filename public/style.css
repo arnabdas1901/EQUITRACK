@@ -3248,3 +3248,135 @@ select {
     }
 }
 
+/* ==========================================================================
+   FOREX DASHBOARD REDESIGN
+   ========================================================================== */
+
+:root {
+    --bg-card-midnight: rgba(10, 14, 23, 0.7);
+    --neon-cyan-vibrant: #00f0ff;
+    --neon-blue: #0066ff;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+.forex-kpi-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card-midnight);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 240, 255, 0.15);
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.forex-kpi-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.kpi-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+
+.kpi-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.forex-landing-container {
+    background: var(--bg-card-midnight);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 24px;
+    margin-top: 24px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.forex-data-table-container {
+    overflow-x: auto;
+}
+
+.forex-data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.forex-data-table th {
+    text-align: left;
+    padding: 12px 16px;
+    color: var(--text-secondary-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.forex-data-table td {
+    padding: 16px;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: middle;
+    transition: background-color 0.2s ease;
+}
+
+.forex-table-row {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.forex-table-row:hover {
+    background: rgba(0, 240, 255, 0.03);
+    transform: translateX(4px);
+}
+
+.forex-table-row:hover td {
+    border-bottom-color: rgba(0, 240, 255, 0.2);
+}
+
+.font-mono {
+    font-family: var(--font-mono);
+}
+
+/* Make Chart Box Pop slightly more for Forex */
+#dashboard-forex .chart-wrapper-box {
+    border: 1px solid rgba(0, 102, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 102, 255, 0.05);
+}
+
+@media (max-width: 1024px) {
+    .forex-kpi-bar {
+        padding: 12px 16px;
+    }
+    .kpi-value {
+        font-size: 1rem;
+    }
+    .forex-data-table td, .forex-data-table th {
+        padding: 12px 8px;
+    }
+}
+
+@media (max-width: 768px) {
+    .forex-kpi-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+    .forex-data-table th:nth-child(2),
+    .forex-data-table td:nth-child(2) {
+        display: none; /* Hide currency full name on mobile */
+    }
+}

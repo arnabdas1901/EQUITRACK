@@ -33,7 +33,7 @@ export async function setupForexTracker() {
         });
     }
 
-    const cards = document.querySelectorAll('#forex-brackets-grid .crypto-bracket-card');
+    const cards = document.querySelectorAll('#forex-brackets-grid .forex-table-row');
     cards.forEach(card => {
         card.addEventListener('click', () => {
             const symbol = card.querySelector('.bracket-symbol').innerText;
@@ -54,6 +54,8 @@ export async function setupForexTracker() {
         aiGenBtn.addEventListener('click', generateAiForexProfile);
     }
 
+
+
     loadLatestForexRates();
 }
 
@@ -63,7 +65,7 @@ async function loadLatestForexRates() {
         const data = await safeJsonParse(res);
         if (!data || !data.rates) return;
 
-        const cards = document.querySelectorAll('#forex-brackets-grid .crypto-bracket-card');
+        const cards = document.querySelectorAll('#forex-brackets-grid .forex-table-row');
         cards.forEach(card => {
             const symbol = card.querySelector('.bracket-symbol').innerText;
             let toCurrency;
@@ -123,6 +125,8 @@ async function executeForexSearch(pairQuery) {
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-robot"></i> Generate Profile';
         }
+        
+
 
         window.currentForexPair = {
             fromSymbol: data.fromSymbol,
@@ -196,11 +200,13 @@ function renderForexChart(chartData, pairName, isPositive) {
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: '#1a1f2e',
-                    titleColor: '#8f9bb3',
-                    bodyColor: '#ffffff',
-                    borderColor: '#2e3852',
+                    backgroundColor: 'rgba(10, 14, 23, 0.9)',
+                    titleColor: 'rgba(255, 255, 255, 0.7)',
+                    bodyColor: '#00f0ff',
+                    bodyFont: { family: "'JetBrains Mono', monospace", size: 14, weight: 'bold' },
+                    borderColor: 'rgba(0, 240, 255, 0.3)',
                     borderWidth: 1,
+                    padding: 12,
                     callbacks: {
                         label: (ctx) => `Price: ${ctx.parsed.y.toFixed(4)}`
                     }
@@ -208,16 +214,26 @@ function renderForexChart(chartData, pairName, isPositive) {
             },
             scales: {
                 x: {
-                    display: false
+                    display: true,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.4)',
+                        maxTicksLimit: 6
+                    }
                 },
                 y: {
                     display: true,
                     position: 'right',
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.05)'
+                        color: 'rgba(255, 255, 255, 0.05)',
+                        drawBorder: false
                     },
                     ticks: {
-                        color: '#8f9bb3',
+                        color: 'rgba(255, 255, 255, 0.4)',
+                        font: { family: "'JetBrains Mono', monospace" },
                         callback: (val) => val.toFixed(4)
                     }
                 }
@@ -249,6 +265,12 @@ async function generateAiForexProfile() {
         if (data.error) throw new Error(data.error);
         
         display.innerText = data.analysis || 'Analysis unavailable.';
+        
+        if (btn) {
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Analysis Complete';
+        }
+        
+
     } catch (err) {
         console.error('Forex AI Gen Error:', err);
         display.innerText = 'Failed to generate profile.';
@@ -258,3 +280,4 @@ async function generateAiForexProfile() {
         }
     }
 }
+
