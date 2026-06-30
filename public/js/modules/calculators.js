@@ -15,6 +15,12 @@ export function setupCalculators() {
         });
     });
 
+    const wrapper = document.getElementById('calc-inputs-wrapper');
+    if (wrapper) {
+        wrapper.addEventListener('input', calculateCurrent);
+        wrapper.addEventListener('change', calculateCurrent);
+    }
+
     // Initial render for default active tab (SIP)
     renderCalcInputs(activeCalcType);
 }
@@ -164,6 +170,54 @@ function renderCalcInputs(type) {
             </div>
         `;
         wireInflationSlider('calc-swp-inflation', 'calc-swp-inflation-val');
+    } else if (type === 'fire') {
+        wrapper.innerHTML = `
+            <div class="input-field-group">
+                <label>Current Age (Years)</label>
+                <input type="number" id="calc-fire-current-age" value="30" min="1" max="80" step="1">
+            </div>
+            <div class="input-field-group">
+                <label>Target Retirement Age (Years)</label>
+                <input type="number" id="calc-fire-retire-age" value="50" min="2" max="80" step="1">
+            </div>
+            <div class="input-field-group">
+                <label>Current Savings / Corpus ($)</label>
+                <input type="number" id="calc-fire-corpus" value="50000" min="0" step="1000">
+            </div>
+            <div class="input-field-group">
+                <label>Monthly Savings Contribution ($)</label>
+                <input type="number" id="calc-fire-monthly" value="1000" min="0" step="100">
+            </div>
+            <div class="input-field-group">
+                <label>Annual Living Expenses Today ($)</label>
+                <input type="number" id="calc-fire-expenses" value="40000" min="0" step="1000">
+            </div>
+            <div class="input-field-group">
+                <label>Pre-Retirement Annual Return (%)</label>
+                <input type="number" id="calc-fire-pre-rate" value="10" min="0" max="40" step="0.5">
+            </div>
+            <div class="input-field-group">
+                <label>Post-Retirement Annual Return (%)</label>
+                <input type="number" id="calc-fire-post-rate" value="7" min="0" max="40" step="0.5">
+            </div>
+            <div class="input-field-group inflation-input-group">
+                <label><i class="fa-solid fa-chart-line"></i> Inflation Rate (Annual %)</label>
+                <div class="range-input-row">
+                    <input type="range" id="calc-fire-inflation" min="0" max="15" step="0.5" value="6" class="inflation-slider">
+                    <span id="calc-fire-inflation-val" class="range-display-value">6%</span>
+                </div>
+            </div>
+            <button class="primary-btn fluid-btn" onclick="window.runCalc()">Calculate FIRE Path</button>
+            <div class="calc-definition-card">
+                <div class="calc-def-header">
+                    <i class="fa-solid fa-fire calc-def-icon fire-icon" style="color: #ff6b6b;"></i>
+                    <span class="calc-def-term">Financial Independence Retire Early (FIRE)</span>
+                </div>
+                <p class="calc-def-text">The FIRE Planner is an advanced <strong>life-cycle capital mapping model</strong> that calculates the savings accumulation phase up to retirement, followed by a decumulation (withdrawal) phase. It helps plan the exact transition point where passive portfolio growth can sustain your inflation-adjusted living expenses indefinitely.</p>
+                <p class="calc-def-text" style="margin-top: 8px;">The accumulation curve grows exponentially based on pre-retirement rate assumption. Upon reaching retirement, the model projects annual expenses rising with inflation, and simulates month-by-month withdrawals compounded at post-retirement yields up to age 85.</p>
+            </div>
+        `;
+        wireInflationSlider('calc-fire-inflation', 'calc-fire-inflation-val');
     }
     window.runCalc = calculateCurrent;
     calculateCurrent();
@@ -175,6 +229,7 @@ function calculateCurrent() {
     if (activeCalcType === 'sip') calculateSIP();
     else if (activeCalcType === 'emi') calculateEMI();
     else if (activeCalcType === 'swp') calculateSWP();
+    else if (activeCalcType === 'fire') calculateFIRE();
 }
 
 // ─── SIP Calculation: Step-Up + Inflation-Adjusted ──────────────────
@@ -655,3 +710,166 @@ function renderCalcResults(doughnutLabels, doughnutData, doughnutColors, metrics
         });
     }
 }
+
+function calculateFIRE() {
+    const currentAge  = parseInt(document.getElementById('calc-fire-current-age').value) || 30;
+    const retireAge   = parseInt(document.getElementById('calc-fire-retire-age').value) || 50;
+    const initialSavings = parseFloat(document.getElementById('calc-fire-corpus').value) || 0;
+    const monthlySavings = parseFloat(document.getElementById('calc-fire-monthly').value) || 0;
+    const annualExpensesToday = parseFloat(document.getElementById('calc-fire-expenses').value) || 0;
+    const preRate     = parseFloat(document.getElementById('calc-fire-pre-rate').value) || 0;
+    const postRate    = parseFloat(document.getElementById('calc-fire-post-rate').value) || 0;
+    const inflation   = parseFloat(document.getElementById('calc-fire-inflation').value) || 0;
+
+    if (retireAge <= currentAge || currentAge <= 0) return;
+
+    const preMonthlyRate = preRate / 100 / 12;
+    const postMonthlyRate = postRate / 100 / 12;
+
+    let balance = initialSavings;
+    let totalSavingsInvested = initialSavings;
+    
+    const yearsToRetire = retireAge - currentAge;
+    const ageLabels = [];
+    const corpusBalanceData = [];
+    const principalInvestedData = [];
+
+    ageLabels.push(currentAge);
+    corpusBalanceData.push(Math.round(balance));
+    principalInvestedData.push(Math.round(totalSavingsInvested));
+
+    for (let y = 1; y <= yearsToRetire; y++) {
+        for (let m = 0; m < 12; m++) {
+            balance = (balance + monthlySavings) * (1 + preMonthlyRate);
+            totalSavingsInvested += monthlySavings;
+        }
+        ageLabels.push(currentAge + y);
+        corpusBalanceData.push(Math.round(balance));
+        principalInvestedData.push(Math.round(totalSavingsInvested));
+    }
+
+    const corpusAtRetirement = balance;
+    const investedAtRetirement = totalSavingsInvested;
+    const gainsAtRetirement = Math.max(0, corpusAtRetirement - investedAtRetirement);
+
+    const expensesAtRetirement = annualExpensesToday * Math.pow(1 + inflation / 100, yearsToRetire);
+    const fireNumber = expensesAtRetirement * 25;
+
+    const yearsInRetirement = Math.max(5, 85 - retireAge);
+    let decumBalance = corpusAtRetirement;
+    let depleted = false;
+    let depletionAge = null;
+    let totalWithdrawn = 0;
+
+    let currentExpenses = expensesAtRetirement;
+
+    for (let y = 1; y <= yearsInRetirement; y++) {
+        const currentYearExpenses = currentExpenses;
+        const monthlyWithdrawal = currentYearExpenses / 12;
+        
+        for (let m = 0; m < 12; m++) {
+            if (decumBalance > 0) {
+                decumBalance = (decumBalance * (1 + postMonthlyRate)) - monthlyWithdrawal;
+                totalWithdrawn += monthlyWithdrawal;
+                if (decumBalance < 0) {
+                    decumBalance = 0;
+                }
+            } else {
+                decumBalance = 0;
+            }
+        }
+        
+        currentExpenses = currentExpenses * (1 + inflation / 100);
+
+        ageLabels.push(retireAge + y);
+        corpusBalanceData.push(Math.round(decumBalance));
+        principalInvestedData.push(Math.round(investedAtRetirement));
+
+        if (decumBalance <= 0 && !depleted) {
+            depleted = true;
+            depletionAge = retireAge + y;
+        }
+    }
+
+    const fireProgress = fireNumber > 0 ? (corpusAtRetirement / fireNumber) * 100 : 0;
+
+    const statusHTML = depletionAge
+        ? `<div class="metric-card metric-card-warning">
+            <span class="metric-title"><i class="fa-solid fa-triangle-exclamation"></i> Corpus Depletion</span>
+            <span class="metric-value" style="color: #ef4444;">Age ${depletionAge}</span>
+           </div>`
+        : `<div class="metric-card metric-card-success">
+            <span class="metric-title"><i class="fa-solid fa-circle-check"></i> Sustainability</span>
+            <span class="metric-value" style="color: #10b981;">Sustainable</span>
+           </div>`;
+
+    renderCalcResults(
+        ['Invested Capital', 'Accumulated Gains'],
+        [investedAtRetirement, gainsAtRetirement],
+        ['#2563eb', '#10b981'],
+        `
+        <div class="metric-card">
+            <span class="metric-title">Corpus at Retirement</span>
+            <span class="metric-value" style="color: var(--neon-cyan-vibrant);">${fmtCurrency(corpusAtRetirement)}</span>
+        </div>
+        <div class="metric-card">
+            <span class="metric-title">Required FIRE Number</span>
+            <span class="metric-value">${fmtCurrency(fireNumber)}</span>
+        </div>
+        <div class="metric-card">
+            <span class="metric-title">FIRE Target Progress</span>
+            <span class="metric-value" style="color: ${fireProgress >= 100 ? '#10b981' : '#f59e0b'};">${fireProgress.toFixed(1)}%</span>
+        </div>
+        <div class="metric-card">
+            <span class="metric-title">Invested Savings</span>
+            <span class="metric-value">${fmtCurrency(investedAtRetirement)}</span>
+        </div>
+        <div class="metric-card">
+            <span class="metric-title">Investment Gains</span>
+            <span class="metric-value" style="color: #10b981;">+${fmtCurrency(gainsAtRetirement)}</span>
+        </div>
+        <div class="metric-card">
+            <span class="metric-title">Total Withdrawals (Age 85)</span>
+            <span class="metric-value" style="color: #f59e0b;">${fmtCurrency(totalWithdrawn)}</span>
+        </div>
+        <div class="metric-card">
+            <span class="metric-title">Nominal Final Balance</span>
+            <span class="metric-value">${fmtCurrency(decumBalance)}</span>
+        </div>
+        ${statusHTML}
+        `,
+        {
+            type: 'line',
+            labels: ageLabels.map(age => `Age ${age}`),
+            datasets: [
+                {
+                    label: 'Net Worth Corpus ($)',
+                    data: corpusBalanceData,
+                    borderColor: '#06b6d4',
+                    backgroundColor: 'rgba(6, 182, 212, 0.06)',
+                    borderWidth: 2.5,
+                    fill: true,
+                    tension: 0.35,
+                    pointBackgroundColor: ageLabels.map((age, idx) => {
+                        if (age === retireAge) return '#f59e0b';
+                        if (corpusBalanceData[idx] <= 0) return '#ef4444';
+                        return '#06b6d4';
+                    }),
+                    pointBorderColor: ageLabels.map((age, idx) => {
+                        if (age === retireAge) return '#f59e0b';
+                        if (corpusBalanceData[idx] <= 0) return '#ef4444';
+                        return '#06b6d4';
+                    }),
+                    pointRadius: ageLabels.map((age, idx) => {
+                        if (age === retireAge) return 6;
+                        if (corpusBalanceData[idx] <= 0) return 6;
+                        return 0;
+                    }),
+                    pointHoverRadius: 6
+                }
+            ],
+            stacked: false
+        }
+    );
+}
+

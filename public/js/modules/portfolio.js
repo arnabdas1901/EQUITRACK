@@ -1,6 +1,16 @@
 let portfolioChartInstance = null;
 let projectionChartInstance = null;
 let scatterChartInstance = null;
+let currentSubAllocations = []; // Global store for active ETF sub-allocations
+
+const CORRELATION_MATRIX = {
+    VOO: { VOO: 1.0,  VEA: 0.82, VWO: 0.76, TLT: -0.31, LQD: 0.24, GLD: 0.08 },
+    VEA: { VOO: 0.82, VEA: 1.0,  VWO: 0.85, TLT: -0.25, LQD: 0.28, GLD: 0.12 },
+    VWO: { VOO: 0.76, VEA: 0.85, VWO: 1.0,  TLT: -0.22, LQD: 0.32, GLD: 0.15 },
+    TLT: { VOO: -0.31, VEA: -0.25, VWO: -0.22, TLT: 1.0,  LQD: 0.58, GLD: 0.22 },
+    LQD: { VOO: 0.24, VEA: 0.28, VWO: 0.32, TLT: 0.58, LQD: 1.0,  GLD: 0.15 },
+    GLD: { VOO: 0.08, VEA: 0.12, VWO: 0.15, TLT: 0.22, LQD: 0.15, GLD: 1.0 }
+};
 
 const RISK_FREE_RATE = 0.045; // Current approx. US T-Bill rate
 
@@ -16,9 +26,11 @@ const ASSET_CLASSES = {
 export function setupPortfolioBuilder() {
     const generateBtn = document.getElementById('generate-portfolio-btn');
     const stressBtn = document.getElementById('portfolio-to-stress-btn');
+    const pdfBtn = document.getElementById('portfolio-pdf-btn');
 
     if (generateBtn) generateBtn.addEventListener('click', generatePortfolio);
     if (stressBtn) stressBtn.addEventListener('click', navigateToStressTest);
+    if (pdfBtn) pdfBtn.addEventListener('click', exportPortfolioPdf);
 
     // Generate initial
     generatePortfolio();
@@ -87,14 +99,9 @@ function generatePortfolio() {
     fixedIncome = 100 - equity - metals;
 
     // Micro Allocation for Projection (Tier 2/3)
-    const subAllocations = calculateSubAllocations(equity, fixedIncome, metals, risk);
+    currentSubAllocations = calculateSubAllocations(equity, fixedIncome, metals, risk);
     
-    // Render all sections
-    renderPortfolioDoughnut([equity, fixedIncome, metals], initialCapital);
-    renderPortfolioSummaryBar(subAllocations, initialCapital);
-    renderETFHoldingsTable(subAllocations, initialCapital);
-    calculateAndRenderProjection(subAllocations, initialCapital);
-    renderRiskReturnScatter(subAllocations);
+    updatePortfolioRender(currentSubAllocations, initialCapital);
 
     // Animate card reveals
     animateCardReveals();
@@ -136,24 +143,23 @@ function renderPortfolioSummaryBar(allocations, initialCapital) {
     if (!target) return;
 
     let weightedReturn = 0;
-    let weightedVol = 0;
     let weightedER = 0;
     let weightedYield = 0;
 
     allocations.forEach(a => {
         const w = a.weight / 100;
         weightedReturn += w * a.return;
-        weightedVol += w * a.vol;
         weightedER += w * a.er;
         weightedYield += w * a.yield;
     });
 
-    const sharpe = weightedVol > 0 ? (weightedReturn - RISK_FREE_RATE) / weightedVol : 0;
+    const portfolioVol = calculatePortfolioVolatility(allocations);
+    const sharpe = portfolioVol > 0 ? (weightedReturn - RISK_FREE_RATE) / portfolioVol : 0;
     const projectedValue = initialCapital * Math.pow(1 + weightedReturn, 10);
 
     const kpis = [
         { label: 'Expected Return', value: (weightedReturn * 100).toFixed(2), suffix: '%', accent: 'var(--neon-green-positive)' },
-        { label: 'Portfolio Risk (σ)', value: (weightedVol * 100).toFixed(2), suffix: '%', accent: '#f59e0b' },
+        { label: 'Portfolio Risk (σ)', value: (portfolioVol * 100).toFixed(2), suffix: '%', accent: '#f59e0b' },
         { label: 'Sharpe Ratio', value: sharpe.toFixed(2), suffix: '', accent: 'var(--neon-cyan-vibrant)' },
         { label: 'Weighted Exp. Ratio', value: (weightedER * 100).toFixed(3), suffix: '%', accent: '#94a3b8' },
         { label: 'Dividend Yield', value: (weightedYield * 100).toFixed(2), suffix: '%', accent: '#7c3aed' },
@@ -201,17 +207,19 @@ function renderETFHoldingsTable(allocations, initialCapital) {
                     </div>
                 </td>
                 <td><span class="etf-ticker-badge">${a.ticker}</span></td>
-                <td class="num-col">
-                    <div class="weight-cell">
-                        <span class="weight-number">${a.weight.toFixed(1)}%</span>
-                        <div class="weight-bar-track"><div class="weight-bar-fill" style="width: ${a.weight}%; background: ${a.color}"></div></div>
+                <td class="num-col" style="padding-top: 8px; padding-bottom: 8px;">
+                    <div class="weight-cell" style="display: flex; align-items: center; justify-content: flex-end;">
+                        <input type="number" class="etf-weight-input font-mono" data-ticker="${a.ticker}" value="${a.weight.toFixed(1)}" min="0" max="100" step="0.5" style="width: 60px; background: rgba(10, 14, 23, 0.4); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 6px; border-radius: 4px; text-align: right; font-size: 0.85rem; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='var(--neon-cyan-vibrant)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+                        <div class="weight-bar-track" style="width: 40px; height: 4px; background: rgba(255,255,255,0.05); margin-left: 8px; border-radius: 2px; overflow: hidden; position: relative;">
+                            <div class="weight-bar-fill" style="width: ${a.weight}%; height: 100%; background: ${a.color}; border-radius: 2px;"></div>
+                        </div>
                     </div>
                 </td>
-                <td class="num-col">${formatCurrency(dollarValue)}</td>
-                <td class="num-col pos-change">${(a.return * 100).toFixed(1)}%</td>
-                <td class="num-col">${(a.vol * 100).toFixed(1)}%</td>
-                <td class="num-col">${(a.yield * 100).toFixed(2)}%</td>
-                <td class="num-col fees-col">${(a.er * 100).toFixed(2)}%</td>
+                <td class="num-col font-mono">${formatCurrency(dollarValue)}</td>
+                <td class="num-col pos-change font-mono">${(a.return * 100).toFixed(1)}%</td>
+                <td class="num-col font-mono">${(a.vol * 100).toFixed(1)}%</td>
+                <td class="num-col font-mono">${(a.yield * 100).toFixed(2)}%</td>
+                <td class="num-col fees-col font-mono">${(a.er * 100).toFixed(2)}%</td>
             </tr>
         `;
     }).join('');
@@ -221,6 +229,14 @@ function renderETFHoldingsTable(allocations, initialCapital) {
     const footerAllocation = document.getElementById('etf-total-allocation');
     if (footerWeight) footerWeight.textContent = totalWeight.toFixed(1) + '%';
     if (footerAllocation) footerAllocation.textContent = formatCurrency(totalAllocation);
+
+    // Attach rebalancer listeners
+    tbody.querySelectorAll('.etf-weight-input').forEach(input => {
+        input.addEventListener('change', handleWeightChange);
+        input.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') handleWeightChange(e);
+        });
+    });
 }
 
 // ── Enhanced Doughnut Chart ────────────────────────────────────
@@ -312,21 +328,18 @@ function renderPortfolioDoughnut(dataArr, initialCapital) {
 // ── 10-Year Projection with Scenario Bands ─────────────────────
 function calculateAndRenderProjection(allocations, initialCapital) {
     let weightedReturn = 0;
-    let weightedVol = 0;
     allocations.forEach(alloc => {
         const w = alloc.weight / 100;
         weightedReturn += w * alloc.return;
-        weightedVol += w * alloc.vol;
     });
+
+    const portfolioVol = calculatePortfolioVolatility(allocations);
 
     const years = 10;
     const labels = [];
     const baseData = [];
     const optimisticData = [];
     const pessimisticData = [];
-
-    const optReturn = weightedReturn + 0.02;
-    const pessReturn = Math.max(0.005, weightedReturn - 0.02);
 
     let baseVal = initialCapital;
     let optVal = initialCapital;
@@ -337,15 +350,22 @@ function calculateAndRenderProjection(allocations, initialCapital) {
         baseData.push(Math.round(baseVal));
         optimisticData.push(Math.round(optVal));
         pessimisticData.push(Math.round(pessVal));
+
+        // Projections compound dynamically using standard deviation envelopes
+        const t = i + 1;
+        const optReturn = weightedReturn + portfolioVol * (Math.sqrt(t) - Math.sqrt(i));
+        const pessReturn = Math.max(0.001, weightedReturn - portfolioVol * (Math.sqrt(t) - Math.sqrt(i)));
+
         baseVal *= (1 + weightedReturn);
         optVal *= (1 + optReturn);
         pessVal *= (1 + pessReturn);
     }
 
     const cagrPercent = (weightedReturn * 100).toFixed(2);
+    const volPercent = (portfolioVol * 100).toFixed(2);
     const desc = document.getElementById('portfolio-projection-desc');
     if (desc) {
-        desc.textContent = `Base CAGR: ${cagrPercent}% · Optimistic: +2pp · Pessimistic: −2pp · ${years}-year horizon`;
+        desc.textContent = `Base CAGR: ${cagrPercent}% · Volatility: ${volPercent}% · Horizon: ${years} years`;
     }
 
     const canvas = document.getElementById('portfolioProjectionChart');
@@ -358,7 +378,7 @@ function calculateAndRenderProjection(allocations, initialCapital) {
             labels: labels,
             datasets: [
                 {
-                    label: 'Optimistic',
+                    label: 'Optimistic (+1σ)',
                     data: optimisticData,
                     borderColor: 'rgba(16, 185, 129, 0.4)',
                     backgroundColor: 'rgba(16, 185, 129, 0.05)',
@@ -383,7 +403,7 @@ function calculateAndRenderProjection(allocations, initialCapital) {
                     pointHoverRadius: 6
                 },
                 {
-                    label: 'Pessimistic',
+                    label: 'Pessimistic (-1σ)',
                     data: pessimisticData,
                     borderColor: 'rgba(239, 68, 68, 0.4)',
                     backgroundColor: 'rgba(239, 68, 68, 0.05)',
@@ -570,4 +590,239 @@ function animateCardReveals() {
             card.style.transform = 'translateY(0)';
         }, 150 + i * 100);
     });
+}
+
+function updatePortfolioRender(subAllocations, initialCapital) {
+    let equity = 0, fixedIncome = 0, metals = 0;
+    subAllocations.forEach(a => {
+        if (a.ticker === 'VOO' || a.ticker === 'VEA' || a.ticker === 'VWO') equity += a.weight;
+        else if (a.ticker === 'TLT' || a.ticker === 'LQD') fixedIncome += a.weight;
+        else if (a.ticker === 'GLD') metals += a.weight;
+    });
+
+    renderPortfolioDoughnut([equity, fixedIncome, metals], initialCapital);
+    renderPortfolioSummaryBar(subAllocations, initialCapital);
+    renderETFHoldingsTable(subAllocations, initialCapital);
+    calculateAndRenderProjection(subAllocations, initialCapital);
+    renderRiskReturnScatter(subAllocations);
+}
+
+function calculatePortfolioVolatility(allocations) {
+    let variance = 0;
+    const active = allocations.filter(a => a.weight > 0);
+    if (active.length === 0) return 0;
+    
+    active.forEach(a => {
+        const w = a.weight / 100;
+        variance += Math.pow(w * a.vol, 2);
+    });
+    
+    for (let i = 0; i < active.length; i++) {
+        for (let j = i + 1; j < active.length; j++) {
+            const assetA = active[i];
+            const assetB = active[j];
+            const wA = assetA.weight / 100;
+            const wB = assetB.weight / 100;
+            const corr = CORRELATION_MATRIX[assetA.ticker][assetB.ticker] || 0;
+            variance += 2 * wA * wB * assetA.vol * assetB.vol * corr;
+        }
+    }
+    
+    return Math.sqrt(variance);
+}
+
+function handleWeightChange(e) {
+    const input = e.target;
+    const ticker = input.getAttribute('data-ticker');
+    let newVal = parseFloat(input.value);
+    if (isNaN(newVal) || newVal < 0) newVal = 0;
+    if (newVal > 100) newVal = 100;
+    
+    const targetAsset = currentSubAllocations.find(a => a.ticker === ticker);
+    if (!targetAsset) return;
+    const oldVal = targetAsset.weight;
+    const diff = newVal - oldVal;
+    
+    targetAsset.weight = newVal;
+    
+    const others = currentSubAllocations.filter(a => a.ticker !== ticker);
+    const othersSum = others.reduce((sum, a) => sum + a.weight, 0);
+    
+    if (othersSum > 0) {
+        others.forEach(a => {
+            a.weight = Math.max(0, a.weight - diff * (a.weight / othersSum));
+        });
+    } else if (others.length > 0) {
+        const share = -diff / others.length;
+        others.forEach(a => {
+            a.weight = Math.max(0, share);
+        });
+    }
+    
+    const newSum = currentSubAllocations.reduce((sum, a) => sum + a.weight, 0);
+    if (newSum > 0) {
+        currentSubAllocations.forEach(a => {
+            a.weight = (a.weight / newSum) * 100;
+        });
+    }
+    
+    const initialCapital = parseFloat(document.getElementById('portfolio-capital-input')?.value) || 100000;
+    updatePortfolioRender(currentSubAllocations, initialCapital);
+}
+
+async function exportPortfolioPdf() {
+    if (!window.html2pdf) {
+        import('../utils.js').then(({ showToast }) => showToast('PDF library is still loading...'));
+        return;
+    }
+
+    const initialCapital = parseFloat(document.getElementById('portfolio-capital-input')?.value) || 100000;
+    const age = parseInt(document.getElementById('portfolio-age-input')?.value) || 30;
+    const risk = document.getElementById('portfolio-risk-input')?.value || 'moderate';
+
+    const pieCanvas = document.getElementById('portfolioPieChart');
+    const projCanvas = document.getElementById('portfolioProjectionChart');
+    const scatterCanvas = document.getElementById('portfolioScatterChart');
+
+    const pieImg = pieCanvas ? pieCanvas.toDataURL('image/png') : '';
+    const projImg = projCanvas ? projCanvas.toDataURL('image/png') : '';
+    const scatterImg = scatterCanvas ? scatterCanvas.toDataURL('image/png') : '';
+
+    let totalReturn = 0;
+    let totalER = 0;
+    let totalYield = 0;
+    currentSubAllocations.forEach(a => {
+        const w = a.weight / 100;
+        totalReturn += w * a.return;
+        totalER += w * a.er;
+        totalYield += w * a.yield;
+    });
+    const totalVol = calculatePortfolioVolatility(currentSubAllocations);
+    const sharpe = totalVol > 0 ? (totalReturn - RISK_FREE_RATE) / totalVol : 0;
+
+    const tableRowsHtml = currentSubAllocations.map(a => `
+        <tr>
+            <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb;"><strong>${a.name}</strong><br><span style="font-size: 9px; color: #6b7280;">${a.etf}</span></td>
+            <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb; font-family: monospace;">${a.ticker}</td>
+            <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb; font-family: monospace; text-align: right;">${a.weight.toFixed(1)}%</td>
+            <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb; font-family: monospace; text-align: right;">$${((a.weight / 100) * initialCapital).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+            <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb; font-family: monospace; text-align: right; color: #10b981;">${(a.return * 100).toFixed(1)}%</td>
+            <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb; font-family: monospace; text-align: right;">${(a.vol * 100).toFixed(1)}%</td>
+            <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb; font-family: monospace; text-align: right;">${(a.yield * 100).toFixed(2)}%</td>
+            <td style="padding: 6px 8px; border-bottom: 1px solid #e5e7eb; font-family: monospace; text-align: right;">${(a.er * 100).toFixed(2)}%</td>
+        </tr>
+    `).join('');
+
+    const element = document.createElement('div');
+    element.style.position = 'absolute';
+    element.style.left = '-9999px';
+    element.style.top = '-9999px';
+    element.style.width = '700px';
+    element.style.background = '#ffffff';
+
+    element.innerHTML = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; padding: 40px; line-height: 1.5;">
+            <!-- Header -->
+            <div style="border-bottom: 2px solid #111827; padding-bottom: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <h1 style="margin: 0; font-size: 28px; color: #111827; font-weight: 800; letter-spacing: 0.5px;">STRATA</h1>
+                    <p style="margin: 4px 0 0 0; font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 1.5px;">Institutional Portfolio Architect</p>
+                </div>
+                <div style="text-align: right;">
+                    <p style="margin: 0; font-size: 12px; font-weight: bold; color: #111827;">PORTFOLIO ARCHITECT SUMMARY</p>
+                    <p style="margin: 4px 0 0 0; font-size: 10px; color: #6b7280;">Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </div>
+            </div>
+            
+            <!-- Parameters -->
+            <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; font-size: 12px; border-left: 4px solid #3b82f6;">
+                <div><strong>Initial Capital:</strong> $${initialCapital.toLocaleString()}</div>
+                <div><strong>Investor Age:</strong> ${age} Years</div>
+                <div><strong>Risk Profile:</strong> ${risk.toUpperCase()}</div>
+            </div>
+
+            <!-- Metrics -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; text-align: center;">
+                <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; background: #fafafa;">
+                    <div style="font-size: 10px; text-transform: uppercase; color: #6b7280; margin-bottom: 4px;">Expected Return</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #10b981;">${(totalReturn * 100).toFixed(2)}%</div>
+                </div>
+                <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; background: #fafafa;">
+                    <div style="font-size: 10px; text-transform: uppercase; color: #6b7280; margin-bottom: 4px;">Portfolio Risk (σ)</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #f59e0b;">${(totalVol * 100).toFixed(2)}%</div>
+                </div>
+                <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; background: #fafafa;">
+                    <div style="font-size: 10px; text-transform: uppercase; color: #6b7280; margin-bottom: 4px;">Sharpe Ratio</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #2563eb;">${sharpe.toFixed(2)}</div>
+                </div>
+            </div>
+
+            <h3 style="font-size: 14px; margin: 24px 0 8px 0; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; font-weight: bold; color: #111827;">ETF-Level Holdings Breakdown</h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 28px;">
+                <thead>
+                    <tr style="background: #f3f4f6; border-bottom: 1px solid #d1d5db;">
+                        <th style="padding: 8px; text-align: left; color: #111827; font-weight: bold;">Asset Class</th>
+                        <th style="padding: 8px; text-align: left; color: #111827; font-weight: bold;">Ticker</th>
+                        <th style="padding: 8px; text-align: right; color: #111827; font-weight: bold;">Weight</th>
+                        <th style="padding: 8px; text-align: right; color: #111827; font-weight: bold;">Allocation</th>
+                        <th style="padding: 8px; text-align: right; color: #111827; font-weight: bold;">Return</th>
+                        <th style="padding: 8px; text-align: right; color: #111827; font-weight: bold;">Volatility</th>
+                        <th style="padding: 8px; text-align: right; color: #111827; font-weight: bold;">Yield</th>
+                        <th style="padding: 8px; text-align: right; color: #111827; font-weight: bold;">Exp. Ratio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRowsHtml}
+                </tbody>
+            </table>
+
+            <div style="page-break-before: always; padding-top: 20px;">
+                <h3 style="font-size: 14px; margin-bottom: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; font-weight: bold; color: #111827;">Allocation & Projections</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+                    <div style="border: 1px solid #e5e7eb; padding: 12px; border-radius: 6px; text-align: center;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: #6b7280;">Strategic Allocation</h4>
+                        ${pieImg ? `<img src="${pieImg}" style="width: 240px; height: auto; max-height: 180px;">` : 'Image Error'}
+                    </div>
+                    <div style="border: 1px solid #e5e7eb; padding: 12px; border-radius: 6px; text-align: center;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: #6b7280;">Risk-Return Profile</h4>
+                        ${scatterImg ? `<img src="${scatterImg}" style="width: 240px; height: auto; max-height: 180px;">` : 'Image Error'}
+                    </div>
+                </div>
+
+                <div style="border: 1px solid #e5e7eb; padding: 16px; border-radius: 6px; text-align: center;">
+                    <h4 style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: #6b7280;">10-Year Wealth Projection Cones</h4>
+                    ${projImg ? `<img src="${projImg}" style="width: 580px; height: auto; max-height: 220px;">` : 'Image Error'}
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="margin-top: 48px; border-top: 1px solid #e5e7eb; padding-top: 16px; font-size: 9px; color: #9ca3af; text-align: center; line-height: 1.4;">
+                STRATA Portfolio Risk Engine (v4.0.1). Educational use only. Not financial or investment advice.<br>
+                All calculations represent mathematical approximations derived from historical assets returns.
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(element);
+
+    const opt = {
+        margin:       10,
+        filename:     `STRATA_Portfolio_Architect.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    const btn = document.getElementById('portfolio-pdf-btn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating PDF...';
+
+    try {
+        await window.html2pdf().set(opt).from(element).save();
+    } catch (err) {
+        console.error("PDF generation failed:", err);
+    } finally {
+        document.body.removeChild(element);
+        btn.innerHTML = originalText;
+    }
 }
