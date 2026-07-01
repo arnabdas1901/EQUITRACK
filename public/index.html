@@ -171,11 +171,17 @@
                                 <h3>Market News</h3>
                                 <p>Live updates on US equities and general market trends.</p>
                             </div>
-                            <div class="news-filter-strip">
-                                <button class="news-filter-btn active" data-filter="all">All News</button>
-                                <button class="news-filter-btn" data-filter="tech">Technology</button>
-                                <button class="news-filter-btn" data-filter="finance">Finance & Policy</button>
-                                <button class="news-filter-btn" data-filter="energy">Energy & Commodities</button>
+                            <div class="news-filter-dropdown" id="news-filter-dropdown-container">
+                                <button class="news-filter-dropdown-btn" id="news-filter-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Filter news">
+                                    <span id="news-filter-selected-label">All News</span>
+                                    <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+                                </button>
+                                <ul class="news-filter-dropdown-menu" id="news-filter-menu" role="listbox" aria-label="News categories">
+                                    <li class="news-filter-option active" data-filter="all" role="option" aria-selected="true">All News</li>
+                                    <li class="news-filter-option" data-filter="tech" role="option" aria-selected="false">Technology</li>
+                                    <li class="news-filter-option" data-filter="finance" role="option" aria-selected="false">Finance & Policy</li>
+                                    <li class="news-filter-option" data-filter="energy" role="option" aria-selected="false">Energy & Commodities</li>
+                                </ul>
                             </div>
                         </div>
                         <div class="news-body">

@@ -443,7 +443,7 @@ async function setupMarketNews() {
         
         if (Array.isArray(newsData) && newsData.length > 0) {
             rawNewsArticles = newsData; // Store globally
-            const activeFilterBtn = document.querySelector('#dashboard-equity .news-filter-btn.active');
+            const activeFilterBtn = document.querySelector('#dashboard-equity .news-filter-option.active');
             const activeFilter = activeFilterBtn ? activeFilterBtn.getAttribute('data-filter') : 'all';
             filterAndRenderNews(activeFilter);
         } else {
@@ -494,13 +494,68 @@ function setupWatchlist() {
 }
 
 function setupNewsFilters() {
-    const filterBtns = document.querySelectorAll('#dashboard-equity .news-filter-btn');
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            filterBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+    const filterBtn = document.getElementById('news-filter-btn');
+    const filterMenu = document.getElementById('news-filter-menu');
+    const filterOptions = document.querySelectorAll('#dashboard-equity .news-filter-option');
+    const selectedLabel = document.getElementById('news-filter-selected-label');
+
+    if (!filterBtn || !filterMenu) return;
+
+    // Toggle dropdown
+    const toggleDropdown = (show) => {
+        const isExpanded = show !== undefined ? show : filterBtn.getAttribute('aria-expanded') !== 'true';
+        filterBtn.setAttribute('aria-expanded', String(isExpanded));
+        if (isExpanded) {
+            filterMenu.classList.add('show');
+        } else {
+            filterMenu.classList.remove('show');
+        }
+    };
+
+    filterBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleDropdown();
+    });
+
+    // Close on clicking outside
+    document.addEventListener('click', (e) => {
+        if (!filterBtn.contains(e.target) && !filterMenu.contains(e.target)) {
+            toggleDropdown(false);
+        }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            toggleDropdown(false);
+        }
+    });
+
+    // Handle option click
+    filterOptions.forEach(option => {
+        option.addEventListener('click', (e) => {
+            e.stopPropagation();
             
-            const filterType = btn.getAttribute('data-filter');
+            // Remove active states
+            filterOptions.forEach(opt => {
+                opt.classList.remove('active');
+                opt.setAttribute('aria-selected', 'false');
+            });
+            
+            // Add active state to clicked option
+            option.classList.add('active');
+            option.setAttribute('aria-selected', 'true');
+            
+            // Update button label
+            if (selectedLabel) {
+                selectedLabel.textContent = option.textContent;
+            }
+            
+            // Close dropdown
+            toggleDropdown(false);
+            
+            // Trigger filter logic
+            const filterType = option.getAttribute('data-filter');
             filterAndRenderNews(filterType);
         });
     });
